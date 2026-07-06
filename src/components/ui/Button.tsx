@@ -1,0 +1,37 @@
+"use client";
+
+import { forwardRef } from "react";
+
+type Variant = "primary" | "secondary" | "ghost" | "danger";
+
+const VARIANTS: Record<Variant, string> = {
+  primary:
+    "bg-brand text-white shadow-brand hover:bg-brand-hover disabled:hover:bg-brand dark:text-slate-950",
+  secondary:
+    "bg-surface text-ink border border-hairline shadow-soft hover:bg-surface-subtle",
+  ghost: "text-ink-muted hover:bg-surface-subtle hover:text-ink",
+  danger: "bg-danger-bg text-danger-ink border border-danger/30 hover:border-danger/60",
+};
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: Variant;
+  /** Swaps the label while a mutation runs ("Save" → "Saving…") — never a spinner. */
+  busy?: boolean;
+  busyLabel?: string;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", busy = false, busyLabel, className = "", children, disabled, ...props },
+  ref,
+) {
+  return (
+    <button
+      ref={ref}
+      disabled={disabled || busy}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-btn px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-page disabled:opacity-60 ${VARIANTS[variant]} ${className}`}
+      {...props}
+    >
+      {busy ? (busyLabel ?? children) : children}
+    </button>
+  );
+});

@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens — light values follow the rtlayer-web language (single blue
+ * accent over the slate scale, hairline borders, soft ambient shadows); dark
+ * values are designed here, with borders carrying elevation since shadows
+ * read poorly on dark surfaces. Components consume only the semantic names.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+    --page: #f8fafc;
+    --surface: #ffffff;
+    --surface-subtle: #f1f5f9;
+    --hairline: #e2e8f0;
+    --hairline-strong: #cbd5e1;
+    --ink: #0f172a;
+    --ink-secondary: #334155;
+    --ink-muted: #64748b;
+    --ink-faint: #94a3b8;
+    --brand: #0090f6;
+    --brand-dark: #0072c4;
+    --brand-hover: #0080dc;
+    --brand-light: #4db4ff;
+    --brand-tint: rgba(0, 144, 246, 0.08);
+    --brand-tint-strong: rgba(0, 144, 246, 0.14);
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --success-ink: #166534;
+    --warning: #f59e0b;
+    --warning-bg: #fffbeb;
+    --warning-ink: #92400e;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --danger-ink: #991b1b;
+    --skeleton: #edf1f6;
+    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.09), transparent);
+}
+
+.dark {
+    --page: #0b1220;
+    --surface: #0f172a;
+    --surface-subtle: #16213a;
+    --hairline: #1e293b;
+    --hairline-strong: #334155;
+    --ink: #f1f5f9;
+    --ink-secondary: #cbd5e1;
+    --ink-muted: #94a3b8;
+    --ink-faint: #64748b;
+    --brand: #35a5f5;
+    --brand-dark: #0072c4;
+    --brand-hover: #57b6f8;
+    --brand-light: #7cc8fa;
+    --brand-tint: rgba(53, 165, 245, 0.12);
+    --brand-tint-strong: rgba(53, 165, 245, 0.2);
+    --success: #4ade80;
+    --success-bg: rgba(34, 197, 94, 0.12);
+    --success-ink: #86efac;
+    --warning: #fbbf24;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --warning-ink: #fcd34d;
+    --danger: #f87171;
+    --danger-bg: rgba(220, 38, 38, 0.14);
+    --danger-ink: #fca5a5;
+    --skeleton: #1c2942;
+    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.12), transparent);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+    --color-page: var(--page);
+    --color-surface: var(--surface);
+    --color-surface-subtle: var(--surface-subtle);
+    --color-hairline: var(--hairline);
+    --color-hairline-strong: var(--hairline-strong);
+    --color-ink: var(--ink);
+    --color-ink-secondary: var(--ink-secondary);
+    --color-ink-muted: var(--ink-muted);
+    --color-ink-faint: var(--ink-faint);
+    --color-brand: var(--brand);
+    --color-brand-dark: var(--brand-dark);
+    --color-brand-hover: var(--brand-hover);
+    --color-brand-light: var(--brand-light);
+    --color-brand-tint: var(--brand-tint);
+    --color-brand-tint-strong: var(--brand-tint-strong);
+    --color-success: var(--success);
+    --color-success-bg: var(--success-bg);
+    --color-success-ink: var(--success-ink);
+    --color-warning: var(--warning);
+    --color-warning-bg: var(--warning-bg);
+    --color-warning-ink: var(--warning-ink);
+    --color-danger: var(--danger);
+    --color-danger-bg: var(--danger-bg);
+    --color-danger-ink: var(--danger-ink);
+    --color-skeleton: var(--skeleton);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+    --radius-chip: 8px;
+    --radius-btn: 10px;
+    --radius-field: 10px;
+    --radius-badge: 12px;
+    --radius-card: 16px;
+    --radius-dialog: 20px;
+
+    --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-raised: 0 8px 24px -12px rgba(15, 23, 42, 0.18);
+    --shadow-overlay: 0 24px 64px -16px rgba(15, 23, 42, 0.25);
+    --shadow-brand: 0 1px 2px rgba(0, 114, 196, 0.35);
+
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    background-color: var(--page);
+    background-image: var(--page-wash);
+    background-repeat: no-repeat;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle mount motion — chrome stays quiet, and motion is opt-out by OS setting. */
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-up {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .animate-fade-up {
+        animation: fade-up 0.35s ease-out both;
+    }
+
+    @keyframes ping-ring {
+        0% {
+            transform: scale(1);
+            opacity: 0.6;
+        }
+        80%,
+        100% {
+            transform: scale(2.4);
+            opacity: 0;
+        }
+    }
+    .live-dot::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        background: var(--success);
+        animation: ping-ring 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
 }
