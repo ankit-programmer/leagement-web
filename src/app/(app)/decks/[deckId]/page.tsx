@@ -5,6 +5,7 @@ import {
   PencilSquareIcon,
   PlayIcon,
   PlusIcon,
+  SparklesIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
@@ -12,6 +13,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
+import { GenerateDialog } from "@/components/generation/GenerateDialog";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
@@ -49,6 +51,7 @@ export default function DeckPage() {
   const deleteDeck = useDeleteDeck();
 
   const [addOpen, setAddOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
 
@@ -87,6 +90,9 @@ export default function DeckPage() {
             }}
           >
             <TrashIcon className="h-4 w-4" />
+          </Button>
+          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
+            <SparklesIcon className="h-4 w-4" /> Generate with AI
           </Button>
           <Button variant="secondary" onClick={() => setAddOpen(true)}>
             <PlusIcon className="h-4 w-4" /> Add cards
@@ -192,6 +198,8 @@ export default function DeckPage() {
           ) : null}
         </div>
       )}
+
+      <GenerateDialog deckId={deckId} open={generateOpen} onOpenChange={setGenerateOpen} />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen} title="Add a card">
         <CardEditor
