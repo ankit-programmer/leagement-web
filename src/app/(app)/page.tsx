@@ -11,9 +11,11 @@ import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useCreateDeck, useDecks } from "@/lib/queries/decks";
+import { useOverviewStats } from "@/lib/queries/stats";
 
 export default function DashboardPage() {
   const { data: decks, isLoading, isFetching } = useDecks();
+  const { data: overview } = useOverviewStats();
   const createDeck = useCreateDeck();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -23,7 +25,11 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-[-0.025em]">Decks</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Review what&apos;s due, then add what you&apos;re learning next.
+            {overview
+              ? `${overview.dueToday} due today · ${overview.reviewsToday} reviewed · ${
+                  overview.streakDays > 0 ? `${overview.streakDays}-day streak` : "start a streak today"
+                }`
+              : "Review what's due, then add what you're learning next."}
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>

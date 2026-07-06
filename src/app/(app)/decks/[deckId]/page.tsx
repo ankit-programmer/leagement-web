@@ -24,6 +24,7 @@ import { Pill } from "@/components/ui/Pill";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from "@/lib/queries/cards";
 import { useDeck, useDecks, useDeleteDeck, useUpdateDeck } from "@/lib/queries/decks";
+import { useDeckStats } from "@/lib/queries/stats";
 import type { Card as CardType } from "@/lib/types";
 import { CardState } from "@/lib/types";
 
@@ -39,7 +40,9 @@ export default function DeckPage() {
   const router = useRouter();
   const { data: deck } = useDeck(deckId);
   const { data: decks } = useDecks();
+  const { data: stats } = useDeckStats(deckId);
   const counts = decks?.find((d) => d.id === deckId)?.counts;
+  const reviews30d = stats?.reviewsLast30d.reduce((sum, day) => sum + day.count, 0) ?? 0;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -73,6 +76,12 @@ export default function DeckPage() {
               ) : null}
               {counts.new > 0 ? <Pill tone="success">{counts.new} new</Pill> : null}
               <Pill tone="neutral">{counts.total} total</Pill>
+              {stats?.retention30d !== null && stats?.retention30d !== undefined ? (
+                <Pill tone={stats.retention30d >= 0.85 ? "success" : "warning"}>
+                  {Math.round(stats.retention30d * 100)}% retention
+                </Pill>
+              ) : null}
+              {reviews30d > 0 ? <Pill tone="neutral">{reviews30d} reviews / 30d</Pill> : null}
             </div>
           ) : null}
         </div>
