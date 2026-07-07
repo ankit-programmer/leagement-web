@@ -10,8 +10,8 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { GenerateDialog } from "@/components/generation/GenerateDialog";
@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { Pill } from "@/components/ui/Pill";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { api } from "@/lib/api";
 import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from "@/lib/queries/cards";
 import { useDeck, useDecks, useDeleteDeck, useUpdateDeck } from "@/lib/queries/decks";
 import { useDeckStats } from "@/lib/queries/stats";
@@ -58,6 +59,18 @@ export default function DeckPage() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
+
+  // Deep link (?card=<id>) from the Progress trouble list straight into the
+  // editor — fetched by id so pagination depth doesn't matter.
+  const searchParams = useSearchParams();
+  const focusCardId = searchParams.get("card");
+  useEffect(() => {
+    if (!focusCardId) return;
+    api<CardType>(`/cards/${focusCardId}`)
+      .then(({ data }) => setEditing(data))
+      .catch(() => undefined)
+      .finally(() => router.replace(`/decks/${deckId}`, { scroll: false }));
+  }, [focusCardId, deckId, router]);
 
   const allCards = cardsQuery.data?.pages.flatMap((page) => page.data) ?? [];
   const dueNow = counts ? counts.due + counts.learning + Math.min(counts.new, 20) : 0;

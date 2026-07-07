@@ -271,7 +271,7 @@ export default function ProgressPage() {
                     {analytics.troubleCards.map((card) => (
                       <li key={card.id} className="flex items-center justify-between gap-3">
                         <Link
-                          href={`/decks/${card.deckId}`}
+                          href={`/decks/${card.deckId}?card=${card.id}`}
                           className="min-w-0 flex-1 truncate text-sm text-ink-secondary hover:text-ink"
                         >
                           {card.front}
