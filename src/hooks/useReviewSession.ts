@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { Card, Rating, ReviewLog } from "@/lib/types";
+import type { Card, Confidence, Rating, ReviewLog } from "@/lib/types";
 
 const RECIRCULATE_HORIZON_MS = 15 * 60_000;
 /** One bad card must not make a session unfinishable — after 8 in-session
@@ -14,6 +14,9 @@ export interface SessionStats {
   reviewed: number;
   again: number;
   startedAt: number;
+  /** Sure-confidence answers this session: [recalled, total] — the live calibration line. */
+  sureRecalled: number;
+  sureTotal: number;
 }
 
 /**
@@ -26,9 +29,17 @@ export interface SessionStats {
 export function useReviewSession(deckId: string) {
   const [queue, setQueue] = useState<Card[] | null>(null);
   const [revealed, setRevealed] = useState(false);
-  const [stats, setStats] = useState<SessionStats>({ reviewed: 0, again: 0, startedAt: Date.now() });
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [stats, setStats] = useState<SessionStats>({
+    reviewed: 0,
+    again: 0,
+    startedAt: Date.now(),
+    sureRecalled: 0,
+    sureTotal: 0,
+  });
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(Date.now());
+  const confidenceRef = useRef<Confidence | undefined>(undefined);
   const requeues = useRef(new Map<string, number>());
   const grading = useRef(false);
   const queryClient = useQueryClient();
@@ -40,7 +51,7 @@ export function useReviewSession(deckId: string) {
         if (cancelled) return;
         setQueue(data);
         shownAt.current = Date.now();
-        setStats({ reviewed: 0, again: 0, startedAt: Date.now() });
+        setStats({ reviewed: 0, again: 0, startedAt: Date.now(), sureRecalled: 0, sureTotal: 0 });
       })
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
@@ -60,7 +71,10 @@ export function useReviewSession(deckId: string) {
   const current = queue?.[0] ?? null;
   const finished = queue !== null && queue.length === 0;
 
-  const reveal = useCallback(() => setRevealed(true), []);
+  const reveal = useCallback((confidence?: Confidence) => {
+    confidenceRef.current = confidence;
+    setRevealed(true);
+  }, []);
 
   const grade = useCallback(
     async (rating: Rating) => {
@@ -68,6 +82,7 @@ export function useReviewSession(deckId: string) {
       grading.current = true;
       setError(null);
       try {
+        const confidence = confidenceRef.current;
         const { data } = await api<{ card: Card; log: ReviewLog }>("/reviews", {
           method: "POST",
           body: {
@@ -75,10 +90,18 @@ export function useReviewSession(deckId: string) {
             cardId: current.id,
             rating,
             durationMs: Math.min(Date.now() - shownAt.current, 3_600_000),
+            confidence,
+            typedAnswer: typedAnswer.trim() || undefined,
           },
         });
         const updated = data.card;
-        setStats((s) => ({ ...s, reviewed: s.reviewed + 1, again: s.again + (rating === 1 ? 1 : 0) }));
+        setStats((s) => ({
+          ...s,
+          reviewed: s.reviewed + 1,
+          again: s.again + (rating === 1 ? 1 : 0),
+          sureTotal: s.sureTotal + (confidence === 3 ? 1 : 0),
+          sureRecalled: s.sureRecalled + (confidence === 3 && rating > 1 ? 1 : 0),
+        }));
         setQueue((prev) => {
           if (!prev) return prev;
           const rest = prev.slice(1);
@@ -93,6 +116,8 @@ export function useReviewSession(deckId: string) {
           return rest;
         });
         setRevealed(false);
+        setTypedAnswer("");
+        confidenceRef.current = undefined;
         shownAt.current = Date.now();
       } catch (e) {
         setError((e as Error).message);
@@ -100,7 +125,7 @@ export function useReviewSession(deckId: string) {
         grading.current = false;
       }
     },
-    [current, revealed],
+    [current, revealed, typedAnswer],
   );
 
   return {
@@ -111,6 +136,8 @@ export function useReviewSession(deckId: string) {
     revealed,
     reveal,
     grade,
+    typedAnswer,
+    setTypedAnswer,
     stats,
     finished,
   };

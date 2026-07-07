@@ -14,6 +14,10 @@ export interface DeckStats {
   states: { new: number; learning: number; review: number; relearning: number };
   reviewsLast30d: Array<{ date: string; count: number }>;
   retention30d: number | null;
+  calibration: {
+    levels: Record<number, { attempts: number; recallRate: number }>;
+    overconfidentRate: number | null;
+  } | null;
 }
 
 export function useOverviewStats() {

@@ -78,10 +78,15 @@ export interface ReviewLog {
   learningSteps: number;
   review: string;
   durationMs: number | null;
+  confidence: number | null;
+  typedAnswer: string | null;
   createdAt: string;
 }
 
 export type Rating = 1 | 2 | 3 | 4;
+
+/** Pre-reveal self-judgment: 1 = No idea, 2 = Think so, 3 = Sure. */
+export type Confidence = 1 | 2 | 3;
 
 export interface QueueCounts {
   learning: number;

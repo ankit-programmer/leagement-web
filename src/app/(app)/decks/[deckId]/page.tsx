@@ -83,7 +83,29 @@ export default function DeckPage() {
                 </Pill>
               ) : null}
               {reviews30d > 0 ? <Pill tone="neutral">{reviews30d} reviews / 30d</Pill> : null}
+              {stats?.calibration?.overconfidentRate != null && stats.calibration.overconfidentRate > 0.15 ? (
+                <Pill tone="danger">
+                  overconfident on {Math.round(stats.calibration.overconfidentRate * 100)}% of &ldquo;sure&rdquo;
+                  answers
+                </Pill>
+              ) : null}
             </div>
+          ) : null}
+          {stats?.calibration ? (
+            <p className="mt-2 text-xs text-ink-muted">
+              Calibration (30d):{" "}
+              {[
+                [3, "Sure"] as const,
+                [2, "Think so"] as const,
+                [1, "No idea"] as const,
+              ]
+                .filter(([level]) => stats.calibration?.levels[level])
+                .map(([level, label]) => {
+                  const item = stats.calibration!.levels[level];
+                  return `${label} — ${Math.round(item.recallRate * 100)}% recalled over ${item.attempts}`;
+                })
+                .join(" · ")}
+            </p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">

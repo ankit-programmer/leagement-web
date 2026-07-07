@@ -4,26 +4,35 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
+import { ConfidenceBar } from "@/components/review/ConfidenceBar";
 import { GradeBar } from "@/components/review/GradeBar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useReviewSession } from "@/hooks/useReviewSession";
+import type { Confidence } from "@/lib/types";
 
 export default function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const session = useReviewSession(deckId);
-  const { revealed, reveal, grade, current, finished } = session;
+  const { revealed, reveal, grade, current, finished, typedAnswer, setTypedAnswer } = session;
 
-  // Space/Enter reveals; 1–4 grades. The retrieval attempt stays keyboard-first.
+  // Keyboard-first: pre-reveal 1/2/3 reveal with confidence, space/enter without;
+  // post-reveal 1–4 grade. Ignored while typing in the answer box.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      if (!revealed && (event.key === " " || event.key === "Enter")) {
-        event.preventDefault();
-        reveal();
-      } else if (revealed && ["1", "2", "3", "4"].includes(event.key)) {
+      if (!revealed) {
+        if (event.key === " " || event.key === "Enter") {
+          event.preventDefault();
+          reveal(undefined);
+        } else if (["1", "2", "3"].includes(event.key)) {
+          event.preventDefault();
+          reveal(Number(event.key) as Confidence);
+        }
+      } else if (["1", "2", "3", "4"].includes(event.key)) {
         event.preventDefault();
         grade(Number(event.key) as 1 | 2 | 3 | 4);
       }
@@ -73,6 +82,12 @@ export default function ReviewPage() {
                       )}% recalled`
                     : ""}
                 </p>
+                {session.stats.sureTotal > 0 ? (
+                  <p className="mt-1 text-sm text-ink-muted">
+                    &ldquo;Sure&rdquo; answers: {session.stats.sureRecalled}/{session.stats.sureTotal} actually
+                    recalled
+                  </p>
+                ) : null}
               </div>
               <Link href={`/decks/${deckId}`}>
                 <Button>Back to deck</Button>
@@ -90,8 +105,27 @@ export default function ReviewPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={current.imageUrl} alt="" className="max-h-64 rounded-chip" />
                 ) : null}
+                {!revealed ? (
+                  <Textarea
+                    value={typedAnswer}
+                    onChange={(e) => setTypedAnswer(e.target.value)}
+                    placeholder="Type your answer (optional — keeps you honest)…"
+                    className="min-h-20 text-sm"
+                    maxLength={4000}
+                  />
+                ) : null}
                 {revealed ? (
                   <>
+                    {typedAnswer.trim() ? (
+                      <div className="rounded-chip bg-surface-subtle px-3 py-2">
+                        <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
+                          You wrote
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap font-mono text-sm text-ink-secondary">
+                          {typedAnswer}
+                        </p>
+                      </div>
+                    ) : null}
                     <hr className="border-hairline" />
                     <div className="text-ink-secondary">
                       <Markdown>{current.back}</Markdown>
@@ -101,14 +135,7 @@ export default function ReviewPage() {
               </CardContent>
             </Card>
 
-            {revealed ? (
-              <GradeBar onGrade={grade} disabled={false} />
-            ) : (
-              <Button onClick={reveal} className="w-full max-w-xl py-3">
-                Show answer
-                <kbd className="ml-2 font-mono text-[10px] font-normal opacity-70">space</kbd>
-              </Button>
-            )}
+            {revealed ? <GradeBar onGrade={grade} disabled={false} /> : <ConfidenceBar onReveal={reveal} />}
           </>
         ) : null}
       </div>
