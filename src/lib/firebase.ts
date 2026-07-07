@@ -17,10 +17,16 @@ export function firebaseConfigured(): boolean {
 }
 
 /**
- * Uploads a user image to Firebase Storage and returns its download URL,
- * which the API forwards to the LLM as multimodal source material.
+ * Storage layout by lifecycle:
+ * - `cards/`      — images embedded in card markdown; PERSISTENT (deleting one
+ *                   breaks every review of that card)
+ * - `generation/` — AI source-material shots; temporary, safe to bulk-delete
+ *                   once their batches are decided
  */
-export async function uploadImage(file: File): Promise<string> {
+export type UploadFolder = "cards" | "generation";
+
+/** Uploads a user image to Firebase Storage and returns its download URL. */
+export async function uploadImage(file: File, folder: UploadFolder): Promise<string> {
   if (!firebaseConfigured()) {
     throw new Error(
       "Image upload is not configured — set the NEXT_PUBLIC_FIREBASE_* variables (see .env.example).",
@@ -31,7 +37,7 @@ export async function uploadImage(file: File): Promise<string> {
 
   const app = getApps()[0] ?? initializeApp(config as Record<string, string>);
   const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `generation/${crypto.randomUUID()}.${extension}`;
+  const path = `${folder}/${crypto.randomUUID()}.${extension}`;
   const result = await uploadBytes(ref(getStorage(app), path), file, { contentType: file.type });
   return getDownloadURL(result.ref);
 }

@@ -40,7 +40,7 @@ function MarkdownField({
     onError(null);
     setUploading(true);
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImage(file, "cards");
       const snippet = `\n![](${url})\n`;
       const cursor = textareaRef.current?.selectionStart ?? value.length;
       onChange(value.slice(0, cursor) + snippet + value.slice(cursor));

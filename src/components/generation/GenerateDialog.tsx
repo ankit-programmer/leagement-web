@@ -66,7 +66,7 @@ export function GenerateDialog({
       if (image) {
         setUploading(true);
         try {
-          imageUrl = await uploadImage(image);
+          imageUrl = await uploadImage(image, "generation");
         } finally {
           setUploading(false);
         }
