@@ -4,6 +4,7 @@ import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/lib/auth";
 
@@ -33,9 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-2 sm:gap-6">
               <Link href="/" className="flex shrink-0 items-center gap-2 font-bold tracking-[-0.01em]">
-                <span className="flex h-8 w-8 items-center justify-center rounded-chip bg-brand-tint">
-                  🧠
-                </span>
+                <Logo className="h-8 w-8" />
                 <span className="hidden sm:inline">Leagement</span>
               </Link>
               <nav className="flex items-center gap-0.5 sm:gap-1">

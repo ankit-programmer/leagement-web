@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
+import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/lib/auth";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -52,9 +53,7 @@ export default function LoginPage() {
       {GOOGLE_CLIENT_ID ? <Script src="https://accounts.google.com/gsi/client" onLoad={initGoogle} /> : null}
       <Card className="w-full max-w-sm animate-fade-up">
         <CardContent className="flex flex-col items-center gap-5 py-9">
-          <span className="flex h-12 w-12 items-center justify-center rounded-badge bg-brand-tint text-2xl">
-            🧠
-          </span>
+          <Logo className="h-12 w-12" />
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-[-0.025em]">Leagement</h1>
             <p className="mt-1 text-sm text-ink-muted">
