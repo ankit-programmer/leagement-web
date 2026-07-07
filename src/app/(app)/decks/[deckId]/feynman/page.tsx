@@ -88,7 +88,7 @@ export default function FeynmanPage() {
   const [latest, setLatest] = useState<FeynmanSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = topic.trim().length >= 2 && explanation.trim().length >= 40;
+  const canSubmit = (latest !== null || topic.trim().length >= 2) && explanation.trim().length >= 40;
 
   return (
     <div className="mx-auto max-w-2xl animate-fade-up space-y-6">
@@ -113,46 +113,73 @@ export default function FeynmanPage() {
 
       <Card>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              label="Concept"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Why spaced reviews beat cramming"
-              maxLength={200}
-            />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                variant="ghost"
-                className="!px-2 !py-1 text-xs"
-                busy={suggest.isPending}
-                busyLabel="Thinking…"
-                onClick={() =>
-                  suggest.mutate(deckId, {
-                    onSuccess: setTopics,
-                    onError: (e) => setError(e.message),
-                  })
-                }
-              >
-                <SparklesIcon className="h-4 w-4" /> Suggest topics
-              </Button>
-              {topics.map((suggestion) => (
-                <button
-                  key={suggestion}
+          {latest ? (
+            // Mid-thread: the topic is locked; revisions reply to the last critique.
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
+                  Revising
+                </span>
+                <p className="font-bold tracking-[-0.01em]">{latest.topic}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-ink-faint">rev {latest.revision}</span>
+                <Button
                   type="button"
-                  onClick={() => setTopic(suggestion)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    topic === suggestion
-                      ? "bg-brand-tint-strong text-brand-dark dark:text-brand-light"
-                      : "bg-surface-subtle text-ink-muted hover:text-ink"
-                  }`}
+                  variant="secondary"
+                  onClick={() => {
+                    setLatest(null);
+                    setTopic("");
+                    setExplanation("");
+                    setError(null);
+                  }}
                 >
-                  {suggestion}
-                </button>
-              ))}
+                  New topic
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                label="Concept"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g. Why spaced reviews beat cramming"
+                maxLength={200}
+              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="!px-2 !py-1 text-xs"
+                  busy={suggest.isPending}
+                  busyLabel="Thinking…"
+                  onClick={() =>
+                    suggest.mutate(deckId, {
+                      onSuccess: setTopics,
+                      onError: (e) => setError(e.message),
+                    })
+                  }
+                >
+                  <SparklesIcon className="h-4 w-4" /> Suggest topics
+                </Button>
+                {topics.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setTopic(suggestion)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                      topic === suggestion
+                        ? "bg-brand-tint-strong text-brand-dark dark:text-brand-light"
+                        : "bg-surface-subtle text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Textarea
             label="Your explanation — as if teaching a curious 12-year-old"
@@ -175,7 +202,11 @@ export default function FeynmanPage() {
               onClick={() => {
                 setError(null);
                 submit.mutate(
-                  { topic: topic.trim(), explanation: explanation.trim() },
+                  {
+                    topic: (latest?.topic ?? topic).trim(),
+                    explanation: explanation.trim(),
+                    parentId: latest?.id,
+                  },
                   {
                     onSuccess: (session) => setLatest(session),
                     onError: (e) => setError(e.message),
@@ -183,7 +214,7 @@ export default function FeynmanPage() {
                 );
               }}
             >
-              Get critique
+              {latest ? "Submit revision" : "Get critique"}
             </Button>
           </div>
         </CardContent>
@@ -216,6 +247,9 @@ export default function FeynmanPage() {
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
                   <span className="truncate text-sm font-semibold">{session.topic}</span>
                   <span className="flex shrink-0 items-center gap-2">
+                    {session.revision > 1 ? (
+                      <span className="font-mono text-xs text-ink-faint">rev {session.revision}</span>
+                    ) : null}
                     <Pill tone={RATING_TONE[session.rating]}>{session.rating}</Pill>
                     <span className="font-mono text-xs text-ink-faint">
                       {new Date(session.createdAt).toLocaleDateString()}

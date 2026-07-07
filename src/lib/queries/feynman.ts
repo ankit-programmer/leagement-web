@@ -13,6 +13,8 @@ export interface FeynmanCritique {
 export interface FeynmanSession {
   id: string;
   deckId: string;
+  parentId: string | null;
+  revision: number;
   topic: string;
   explanation: string;
   rating: "strong" | "developing" | "shaky";
@@ -37,7 +39,7 @@ export function useSuggestTopics() {
 export function useSubmitExplanation(deckId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { topic: string; explanation: string }) =>
+    mutationFn: async (input: { topic: string; explanation: string; parentId?: string }) =>
       (await api<FeynmanSession>("/feynman", { method: "POST", body: { deckId, ...input } })).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feynman", deckId] }),
   });
