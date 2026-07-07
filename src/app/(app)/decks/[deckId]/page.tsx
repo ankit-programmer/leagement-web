@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AcademicCapIcon,
   MagnifyingGlassIcon,
   PencilSquareIcon,
   PlayIcon,
@@ -100,6 +101,11 @@ export default function DeckPage() {
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
+          <Link href={`/decks/${deckId}/feynman`}>
+            <Button variant="secondary">
+              <AcademicCapIcon className="h-4 w-4" /> Feynman
+            </Button>
+          </Link>
           <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
             <SparklesIcon className="h-4 w-4" /> Generate with AI
           </Button>
