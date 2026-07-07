@@ -4,12 +4,13 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { api } from "../api";
 import type { Card } from "../types";
 
-export function useCards(deckId: string, search: string) {
+export function useCards(deckId: string, search: string, suspendedOnly = false) {
   return useInfiniteQuery({
-    queryKey: ["cards", deckId, search],
+    queryKey: ["cards", deckId, search, suspendedOnly],
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({ limit: "50" });
       if (search) params.set("search", search);
+      if (suspendedOnly) params.set("suspended", "true");
       if (pageParam) params.set("cursor", pageParam);
       return await api<Card[]>(`/decks/${deckId}/cards?${params}`);
     },

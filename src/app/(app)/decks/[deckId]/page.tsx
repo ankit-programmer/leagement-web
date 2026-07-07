@@ -51,7 +51,8 @@ export default function DeckPage() {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const cardsQuery = useCards(deckId, debouncedSearch);
+  const [suspendedOnly, setSuspendedOnly] = useState(false);
+  const cardsQuery = useCards(deckId, debouncedSearch, suspendedOnly);
   const createCard = useCreateCard(deckId);
   const updateCard = useUpdateCard(deckId);
   const deleteCard = useDeleteCard(deckId);
@@ -158,18 +159,39 @@ export default function DeckPage() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
-        <Input
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            const value = event.target.value.trim();
-            window.setTimeout(() => setDebouncedSearch(value), 300);
-          }}
-          placeholder="Search cards…"
-          className="pl-9"
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+          <Input
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              const value = event.target.value.trim();
+              window.setTimeout(() => setDebouncedSearch(value), 300);
+            }}
+            placeholder="Search cards…"
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-1.5">
+          {([
+            [false, "All"],
+            [true, "Suspended"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setSuspendedOnly(value)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                suspendedOnly === value
+                  ? "bg-brand-tint-strong text-brand-dark dark:text-brand-light"
+                  : "bg-surface-subtle text-ink-muted hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {cardsQuery.isLoading ? (
@@ -182,14 +204,16 @@ export default function DeckPage() {
         <QueryError message={cardsQuery.error?.message} onRetry={() => cardsQuery.refetch()} />
       ) : allCards.length === 0 ? (
         <EmptyState
-          title={debouncedSearch ? "No cards match" : "No cards yet"}
+          title={suspendedOnly ? "Nothing set aside" : debouncedSearch ? "No cards match" : "No cards yet"}
           hint={
-            debouncedSearch
-              ? "Try a different search."
-              : "Add cards by hand, or paste your notes and let AI draft them for your approval."
+            suspendedOnly
+              ? "Suspend a card during review (the pause button) when it needs understanding before repetition."
+              : debouncedSearch
+                ? "Try a different search."
+                : "Add cards by hand, or paste your notes and let AI draft them for your approval."
           }
           action={
-            debouncedSearch ? undefined : (
+            debouncedSearch || suspendedOnly ? undefined : (
               <Button onClick={() => setAddOpen(true)}>
                 <PlusIcon className="h-4 w-4" /> Add cards
               </Button>
