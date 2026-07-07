@@ -1,7 +1,8 @@
 "use client";
 
-import { PlusIcon, RectangleStackIcon } from "@heroicons/react/24/outline";
+import { PlayIcon, PlusIcon, RectangleStackIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const { data: overview } = useOverviewStats();
   const createDeck = useCreateDeck();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="animate-fade-up space-y-6">
@@ -67,11 +69,27 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
-                      {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
-                      {dueNow === 0 && deck.counts.new === 0 ? (
-                        <Pill tone="neutral">All caught up</Pill>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
+                        {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
+                        {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
+                        {dueNow === 0 && deck.counts.new === 0 ? (
+                          <Pill tone="neutral">All caught up</Pill>
+                        ) : null}
+                      </div>
+                      {dueNow > 0 || deck.counts.new > 0 ? (
+                        // Straight into the session without opening the deck —
+                        // browsing card fronts first is pre-exposure before retrieval.
+                        <Button
+                          className="!px-2.5 !py-1 text-xs"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            router.push(`/decks/${deck.id}/review`);
+                          }}
+                        >
+                          <PlayIcon className="h-3.5 w-3.5" /> Review
+                        </Button>
                       ) : null}
                     </div>
                   </CardContent>
