@@ -29,6 +29,9 @@ export interface AnalyticsStats {
   retention30d: number | null;
   calibration: DeckStats["calibration"];
   perDeck: Array<{ id: string; name: string; cards: number; due: number; retention30d: number | null }>;
+  upcomingWeek: Array<{ date: string; count: number }>;
+  troubleCards: Array<{ id: string; deckId: string; front: string; lapses: number; sureWrong: boolean }>;
+  effort: { avgSeconds: number | null; minutesToday: number | null };
 }
 
 export function useAnalytics() {

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
+import { Pill } from "@/components/ui/Pill";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { type AnalyticsStats, useAnalytics, useOverviewStats } from "@/lib/queries/stats";
 
@@ -69,6 +70,52 @@ function ReviewsPerDayChart({ data, days }: { data: AnalyticsStats["reviewsPerDa
         <span>peak {max === 1 && series.every((d) => d.count === 0) ? 0 : max}/day</span>
         <span>{series[series.length - 1]?.date.slice(5)}</span>
       </div>
+    </div>
+  );
+}
+
+/** Same bar idiom as reviews-per-day: brand hue, hover count, weekday labels. */
+function WeekAheadChart({ data }: { data: AnalyticsStats["upcomingWeek"] }) {
+  const max = Math.max(1, ...data.map((d) => d.count));
+  const heaviest = data.reduce((a, b) => (b.count > a.count ? b : a), data[0]);
+  const dayLabel = (date: string, index: number) => {
+    if (index === 0) return "today";
+    if (index === 1) return "tmrw";
+    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" });
+  };
+  return (
+    <div>
+      <div className="flex h-28 items-end gap-[2px]" role="img" aria-label="Cards due over the next 7 days">
+        {data.map((day, index) => (
+          <div key={day.date} className="group relative flex h-full flex-1 flex-col justify-end">
+            <div
+              className="w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
+              style={{ height: `${Math.round((day.count / max) * 100)}%`, minHeight: day.count > 0 ? 3 : 0 }}
+            />
+            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
+              {day.count} cards
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex gap-[2px] border-t border-hairline pt-1">
+        {data.map((day, index) => (
+          <span key={day.date} className="flex-1 text-center font-mono text-[10px] text-ink-faint">
+            {dayLabel(day.date, index)}
+          </span>
+        ))}
+      </div>
+      {heaviest && heaviest.count > 0 ? (
+        <p className="mt-2 text-xs text-ink-muted">
+          Heaviest: <span className="font-mono">{heaviest.count}</span> cards on{" "}
+          {new Date(`${heaviest.date}T12:00:00`).toLocaleDateString(undefined, {
+            weekday: "long",
+          })}
+          {heaviest.date === data[0]?.date ? " (today)" : ""}
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-ink-muted">Nothing scheduled this week — add or review cards.</p>
+      )}
     </div>
   );
 }
@@ -189,8 +236,57 @@ export default function ProgressPage() {
 
           <Card>
             <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-bold tracking-[-0.01em]">Week ahead</h2>
+                {analytics.effort.avgSeconds !== null ? (
+                  <p className="text-xs text-ink-muted">
+                    ~<span className="font-mono">{analytics.effort.avgSeconds}s</span> per card · today&apos;s
+                    queue ≈ <span className="font-mono">{analytics.effort.minutesToday} min</span>
+                  </p>
+                ) : null}
+              </div>
+              <WeekAheadChart data={analytics.upcomingWeek} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-4">
               <h2 className="font-bold tracking-[-0.01em]">Collection maturity</h2>
               <MaturityBar cardsByState={analytics.cardsByState} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-3">
+              <h2 className="font-bold tracking-[-0.01em]">Trouble cards</h2>
+              {analytics.troubleCards.length === 0 ? (
+                <p className="text-sm text-ink-muted">No leeches — your cards are healthy. 🌱</p>
+              ) : (
+                <>
+                  <p className="text-xs text-ink-muted">
+                    Repeated failures usually mean the card needs rewriting, not more grinding — split it,
+                    add context, or delete it.
+                  </p>
+                  <ul className="space-y-2">
+                    {analytics.troubleCards.map((card) => (
+                      <li key={card.id} className="flex items-center justify-between gap-3">
+                        <Link
+                          href={`/decks/${card.deckId}`}
+                          className="min-w-0 flex-1 truncate text-sm text-ink-secondary hover:text-ink"
+                        >
+                          {card.front}
+                        </Link>
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          {card.sureWrong ? <Pill tone="danger">sure but wrong</Pill> : null}
+                          {card.lapses > 0 ? (
+                            <Pill tone="warning">{card.lapses} lapses</Pill>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </CardContent>
           </Card>
 
