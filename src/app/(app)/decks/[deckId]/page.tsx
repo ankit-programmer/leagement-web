@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { Pill } from "@/components/ui/Pill";
+import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from "@/lib/queries/cards";
@@ -175,6 +176,8 @@ export default function DeckPage() {
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
         </div>
+      ) : cardsQuery.isError ? (
+        <QueryError message={cardsQuery.error?.message} onRetry={() => cardsQuery.refetch()} />
       ) : allCards.length === 0 ? (
         <EmptyState
           title={debouncedSearch ? "No cards match" : "No cards yet"}

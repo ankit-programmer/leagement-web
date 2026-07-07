@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
+import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDecks } from "@/lib/queries/decks";
 import { type AnalyticsStats, useAnalytics, useOverviewStats } from "@/lib/queries/stats";
@@ -156,7 +157,7 @@ function ProgressContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedDeck = searchParams.get("deck") ?? undefined;
-  const { data: analytics, isLoading, isFetching } = useAnalytics(selectedDeck);
+  const { data: analytics, isLoading, isFetching, isError, error, refetch } = useAnalytics(selectedDeck);
   const { data: overview } = useOverviewStats();
   const { data: decks } = useDecks();
   const [range, setRange] = useState<30 | 90>(30);
@@ -182,7 +183,9 @@ function ProgressContent() {
       </div>
     );
   }
-  if (!analytics) return null;
+  if (isError || !analytics) {
+    return <QueryError message={(error as Error | null)?.message} onRetry={() => refetch()} />;
+  }
 
   const hasData = analytics.totals.reviews > 0 || analytics.totals.cards > 0;
 

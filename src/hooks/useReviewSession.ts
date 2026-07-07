@@ -19,15 +19,22 @@ export interface SessionStats {
   sureTotal: number;
 }
 
+interface PendingLearning {
+  count: number;
+  nextDueAt: string | null;
+}
+
 /**
  * Client-side session state over the server's FSRS engine. The queue is
- * fetched ONCE into local state (a session is a stateful flow, not a cache);
- * a crash/refresh recovers naturally because due times live in the database.
- * After each grade, a card the server put back into (re)learning within the
- * next ~15 minutes is re-enqueued locally.
+ * fetched into local state (a session is a stateful flow, not a cache); a
+ * crash/refresh recovers naturally because due times live in the database.
+ * Cards mid-learning-step that aren't due yet surface as `waiting` (a short
+ * break with a comeback time) rather than a false "session complete" — the
+ * hook auto-refetches when the next card lands.
  */
 export function useReviewSession(deckId: string) {
   const [queue, setQueue] = useState<Card[] | null>(null);
+  const [pending, setPending] = useState<PendingLearning>({ count: 0, nextDueAt: null });
   const [revealed, setRevealed] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState("");
   const [stats, setStats] = useState<SessionStats>({
@@ -44,20 +51,39 @@ export function useReviewSession(deckId: string) {
   const grading = useRef(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let cancelled = false;
-    api<Card[]>(`/decks/${deckId}/review-queue`)
-      .then(({ data }) => {
-        if (cancelled) return;
-        setQueue(data);
-        shownAt.current = Date.now();
-        setStats({ reviewed: 0, again: 0, startedAt: Date.now(), sureRecalled: 0, sureTotal: 0 });
-      })
-      .catch((e: Error) => !cancelled && setError(e.message));
-    return () => {
-      cancelled = true;
-    };
+  const fetchQueue = useCallback(async () => {
+    try {
+      const { data, meta } = await api<Card[]>(`/decks/${deckId}/review-queue`);
+      const counts = meta?.counts as
+        | { pendingLearning?: number; nextLearningDueAt?: string | null }
+        | undefined;
+      setQueue(data);
+      setPending({ count: counts?.pendingLearning ?? 0, nextDueAt: counts?.nextLearningDueAt ?? null });
+      setRevealed(false);
+      setTypedAnswer("");
+      shownAt.current = Date.now();
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }, [deckId]);
+
+  useEffect(() => {
+    setStats({ reviewed: 0, again: 0, startedAt: Date.now(), sureRecalled: 0, sureTotal: 0 });
+    fetchQueue();
+  }, [fetchQueue]);
+
+  const current = queue?.[0] ?? null;
+  const waiting = queue !== null && queue.length === 0 && pending.count > 0;
+  const finished = queue !== null && queue.length === 0 && pending.count === 0;
+
+  // Auto-resume: when the next learning card lands, pull the fresh queue.
+  useEffect(() => {
+    if (!waiting || !pending.nextDueAt) return;
+    const delay = Math.max(1000, new Date(pending.nextDueAt).getTime() - Date.now() + 2000);
+    const timer = window.setTimeout(fetchQueue, delay);
+    return () => window.clearTimeout(timer);
+  }, [waiting, pending.nextDueAt, fetchQueue]);
 
   // Counts and stats changed for good once the session ends (or unmounts mid-way).
   useEffect(() => {
@@ -67,9 +93,6 @@ export function useReviewSession(deckId: string) {
       queryClient.invalidateQueries({ queryKey: ["stats"] });
     };
   }, [queryClient, deckId]);
-
-  const current = queue?.[0] ?? null;
-  const finished = queue !== null && queue.length === 0;
 
   const reveal = useCallback((confidence?: Confidence) => {
     confidenceRef.current = confidence;
@@ -102,35 +125,38 @@ export function useReviewSession(deckId: string) {
           sureTotal: s.sureTotal + (confidence === 3 ? 1 : 0),
           sureRecalled: s.sureRecalled + (confidence === 3 && rating > 1 ? 1 : 0),
         }));
-        setQueue((prev) => {
-          if (!prev) return prev;
-          const rest = prev.slice(1);
-          const count = requeues.current.get(updated.id) ?? 0;
-          const dueSoon =
-            (updated.state === 1 || updated.state === 3) &&
-            new Date(updated.due).getTime() <= Date.now() + RECIRCULATE_HORIZON_MS;
-          if (dueSoon && count < MAX_REQUEUES_PER_CARD) {
-            requeues.current.set(updated.id, count + 1);
-            return [...rest, updated];
-          }
-          return rest;
-        });
+
+        const rest = (queue ?? []).slice(1);
+        const count = requeues.current.get(updated.id) ?? 0;
+        const dueSoon =
+          (updated.state === 1 || updated.state === 3) &&
+          new Date(updated.due).getTime() <= Date.now() + RECIRCULATE_HORIZON_MS;
+        let nextQueue = rest;
+        if (dueSoon && count < MAX_REQUEUES_PER_CARD) {
+          requeues.current.set(updated.id, count + 1);
+          nextQueue = [...rest, updated];
+        }
+        setQueue(nextQueue);
         setRevealed(false);
         setTypedAnswer("");
         confidenceRef.current = undefined;
         shownAt.current = Date.now();
+        // Local queue drained: ask the server what's really left (cards whose
+        // learning step elapsed meanwhile, requeue-capped cards, pending info).
+        if (nextQueue.length === 0) await fetchQueue();
       } catch (e) {
         setError((e as Error).message);
       } finally {
         grading.current = false;
       }
     },
-    [current, revealed, typedAnswer],
+    [current, revealed, typedAnswer, queue, fetchQueue],
   );
 
   return {
     loading: queue === null && !error,
     error,
+    retry: fetchQueue,
     current,
     remaining: queue?.length ?? 0,
     revealed,
@@ -139,6 +165,9 @@ export function useReviewSession(deckId: string) {
     typedAnswer,
     setTypedAnswer,
     stats,
+    waiting,
+    pendingCount: pending.count,
+    nextDueAt: pending.nextDueAt,
     finished,
   };
 }

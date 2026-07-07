@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Markdown } from "@/components/ui/Markdown";
+import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   type GeneratedCard,
@@ -97,7 +98,7 @@ function groupByDeck(rows: GeneratedCard[]): DeckGroup[] {
 }
 
 function QueueContent() {
-  const { data: pending, isLoading, isFetching } = usePendingGenerated();
+  const { data: pending, isLoading, isFetching, isError, error, refetch } = usePendingGenerated();
   const bulk = useBulkDecide();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -166,6 +167,8 @@ function QueueContent() {
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
+      ) : isError ? (
+        <QueryError message={error?.message} onRetry={() => refetch()} />
       ) : visible.length === 0 ? (
         <EmptyState
           title={

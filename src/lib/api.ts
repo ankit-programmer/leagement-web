@@ -61,11 +61,18 @@ export async function api<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      // A hung cold start should fail visibly, not spin forever.
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new ApiError("Server is waking up or unreachable — retrying usually fixes it.", 0);
+  }
 
   if (response.status === 401 && auth) {
     onUnauthorized?.();

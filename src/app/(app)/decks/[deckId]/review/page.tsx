@@ -3,7 +3,7 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ConfidenceBar } from "@/components/review/ConfidenceBar";
 import { GradeBar } from "@/components/review/GradeBar";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,23 @@ import { useReviewSession } from "@/hooks/useReviewSession";
 import { crossedMilestone } from "@/lib/milestones";
 import { useOverviewStats } from "@/lib/queries/stats";
 import type { Confidence } from "@/lib/types";
+
+/** Live M:SS countdown to the next learning-step card. */
+function Countdown({ dueAt }: { dueAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const remaining = Math.max(0, new Date(dueAt).getTime() - now);
+  const minutes = Math.floor(remaining / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1000);
+  return (
+    <span className="font-mono">
+      {minutes}:{String(seconds).padStart(2, "0")}
+    </span>
+  );
+}
 
 export default function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
@@ -59,7 +76,7 @@ export default function ReviewPage() {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-6">
       <div className="flex items-center justify-between">
         <p className="font-mono text-sm text-ink-muted">
-          {session.loading ? "" : finished ? "done" : `${session.remaining} left`}
+          {session.loading ? "" : finished ? "done" : session.waiting ? "break" : `${session.remaining} left`}
         </p>
         <Link
           href={`/decks/${deckId}`}
@@ -79,7 +96,29 @@ export default function ReviewPage() {
             </CardContent>
           </Card>
         ) : session.error ? (
-          <p className="rounded-chip bg-danger-bg px-4 py-3 text-sm text-danger-ink">{session.error}</p>
+          <div className="flex flex-col items-center gap-3">
+            <p className="rounded-chip bg-danger-bg px-4 py-3 text-sm text-danger-ink">{session.error}</p>
+            <Button variant="secondary" onClick={() => session.retry()}>
+              Retry
+            </Button>
+          </div>
+        ) : session.waiting ? (
+          <Card className="w-full animate-fade-up">
+            <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+              <span className="text-4xl">☕</span>
+              <div>
+                <h1 className="text-xl font-bold tracking-[-0.025em]">Short break</h1>
+                <p className="mt-2 text-sm text-ink-muted">
+                  {session.pendingCount} card{session.pendingCount === 1 ? "" : "s"} still learning — back in{" "}
+                  {session.nextDueAt ? <Countdown dueAt={session.nextDueAt} /> : "a moment"}. The session
+                  resumes automatically.
+                </p>
+              </div>
+              <Link href={`/decks/${deckId}`}>
+                <Button variant="secondary">End session</Button>
+              </Link>
+            </CardContent>
+          </Card>
         ) : finished ? (
           <Card className="w-full animate-fade-up">
             <CardContent className="flex flex-col items-center gap-4 py-10 text-center">

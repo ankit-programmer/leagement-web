@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input, Textarea } from "@/components/ui/Field";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
+import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDeck } from "@/lib/queries/decks";
 import {
@@ -232,6 +233,8 @@ export default function FeynmanPage() {
 
       {sessions.isLoading ? (
         <Skeleton className="h-24" />
+      ) : sessions.isError ? (
+        <QueryError message={sessions.error?.message} onRetry={() => sessions.refetch()} />
       ) : sessions.data && sessions.data.length > 0 ? (
         <div className="space-y-2">
           <h2 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">

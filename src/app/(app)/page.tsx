@@ -10,12 +10,13 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
+import { QueryError } from "@/components/ui/QueryError";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { useCreateDeck, useDecks } from "@/lib/queries/decks";
 import { useOverviewStats } from "@/lib/queries/stats";
 
 export default function DashboardPage() {
-  const { data: decks, isLoading, isFetching } = useDecks();
+  const { data: decks, isLoading, isFetching, isError, error, refetch } = useDecks();
   const { data: overview } = useOverviewStats();
   const createDeck = useCreateDeck();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,6 +76,8 @@ export default function DashboardPage() {
           <CardSkeleton />
           <CardSkeleton />
         </div>
+      ) : isError ? (
+        <QueryError message={error?.message} onRetry={() => refetch()} />
       ) : decks && decks.length > 0 ? (
         // Refetches dim instead of reflowing — no layout jump.
         <div
