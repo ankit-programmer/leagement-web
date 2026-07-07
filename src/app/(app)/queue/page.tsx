@@ -3,10 +3,11 @@
 import { CheckIcon, PencilSquareIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { CardEditor } from "@/components/cards/CardEditor";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Textarea } from "@/components/ui/Field";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Markdown } from "@/components/ui/Markdown";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -19,35 +20,20 @@ import {
 
 function QueueRow({ row }: { row: GeneratedCard }) {
   const decide = useDecideGenerated();
-  const [editing, setEditing] = useState(false);
-  const [front, setFront] = useState(row.front);
-  const [back, setBack] = useState(row.back);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <Card>
       <CardContent className="space-y-3">
-        {editing ? (
-          <>
-            <Textarea value={front} onChange={(e) => setFront(e.target.value)} maxLength={2000} />
-            <Textarea value={back} onChange={(e) => setBack(e.target.value)} maxLength={5000} />
-          </>
-        ) : (
-          <>
-            <Markdown>{row.front}</Markdown>
-            <div className="border-l-2 border-hairline pl-3 text-ink-muted">
-              <Markdown>{row.back}</Markdown>
-            </div>
-          </>
-        )}
+        <Markdown>{row.front}</Markdown>
+        <div className="border-l-2 border-hairline pl-3 text-ink-muted">
+          <Markdown>{row.back}</Markdown>
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <Button
             variant="ghost"
-            aria-label={editing ? "Cancel edit" : "Edit before approving"}
-            onClick={() => {
-              setEditing((v) => !v);
-              setFront(row.front);
-              setBack(row.back);
-            }}
+            aria-label="Edit before approving"
+            onClick={() => setEditOpen(true)}
           >
             <PencilSquareIcon className="h-4 w-4" />
           </Button>
@@ -61,19 +47,35 @@ function QueueRow({ row }: { row: GeneratedCard }) {
           <Button
             busy={decide.isPending}
             busyLabel="Approving…"
-            onClick={() =>
-              decide.mutate({
-                id: row.id,
-                action: "approve",
-                front: editing && front.trim() !== row.front ? front.trim() : undefined,
-                back: editing && back.trim() !== row.back ? back.trim() : undefined,
-              })
-            }
+            onClick={() => decide.mutate({ id: row.id, action: "approve" })}
           >
             <CheckIcon className="h-4 w-4" /> Approve
           </Button>
         </div>
       </CardContent>
+
+      {/* Same editor as manual cards — markdown, image attach/camera, preview.
+          Edits are applied at approval time, so submitting here approves. */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen} title="Edit & approve card">
+        <CardEditor
+          card={row}
+          busy={decide.isPending}
+          submitLabel="Approve card"
+          busyLabel="Approving…"
+          onCancel={() => setEditOpen(false)}
+          onSubmit={(input) =>
+            decide.mutate(
+              {
+                id: row.id,
+                action: "approve",
+                front: input.front !== row.front ? input.front : undefined,
+                back: input.back !== row.back ? input.back : undefined,
+              },
+              { onSuccess: () => setEditOpen(false) },
+            )
+          }
+        />
+      </Dialog>
     </Card>
   );
 }

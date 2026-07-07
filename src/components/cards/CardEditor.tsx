@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { uploadImage } from "@/lib/firebase";
-import type { Card } from "@/lib/types";
 
 /**
  * Front/back markdown field with image attachment: picked files upload to
@@ -106,7 +105,8 @@ export function CardEditor({
   submitLabel = "Add card",
   busyLabel = "Adding…",
 }: {
-  card?: Card;
+  /** Existing content when editing (a full card or an AI-generated draft). */
+  card?: { front: string; back: string };
   onSubmit: (input: { front: string; back: string }) => void;
   onCancel?: () => void;
   busy: boolean;
