@@ -7,6 +7,9 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Textarea } from "@/components/ui/Field";
 import { useGenerate } from "@/lib/queries/generation";
 
+/** Must match the API's createGenerationSchema minimum. */
+const MIN_CHARS = 40;
+
 /** Paste source material → AI drafts cards → user reviews them in the queue. */
 export function GenerateDialog({
   deckId,
@@ -56,6 +59,11 @@ export function GenerateDialog({
           maxLength={24_000}
           required
         />
+        <p className="text-xs text-ink-faint">
+          {sourceText.trim().length < MIN_CHARS
+            ? `Needs at least ${MIN_CHARS} characters — ${MIN_CHARS - sourceText.trim().length} more to go.`
+            : `${sourceText.trim().length.toLocaleString()} characters`}
+        </p>
         {error ? (
           <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
         ) : null}
@@ -67,7 +75,7 @@ export function GenerateDialog({
             type="submit"
             busy={generate.isPending}
             busyLabel="Generating…"
-            disabled={sourceText.trim().length < 40}
+            disabled={sourceText.trim().length < MIN_CHARS}
           >
             Generate
           </Button>
