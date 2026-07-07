@@ -34,10 +34,11 @@ export interface AnalyticsStats {
   effort: { avgSeconds: number | null; minutesToday: number | null };
 }
 
-export function useAnalytics() {
+export function useAnalytics(deckId?: string) {
   return useQuery({
-    queryKey: ["stats", "analytics"],
-    queryFn: async () => (await api<AnalyticsStats>("/stats/analytics")).data,
+    queryKey: ["stats", "analytics", deckId ?? "all"],
+    queryFn: async () =>
+      (await api<AnalyticsStats>(`/stats/analytics${deckId ? `?deckId=${deckId}` : ""}`)).data,
   });
 }
 

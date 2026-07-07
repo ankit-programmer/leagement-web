@@ -2,12 +2,14 @@
 
 import { ChartBarIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useDecks } from "@/lib/queries/decks";
 import { type AnalyticsStats, useAnalytics, useOverviewStats } from "@/lib/queries/stats";
 
 /**
@@ -150,10 +152,23 @@ function MaturityBar({ cardsByState }: { cardsByState: AnalyticsStats["cardsBySt
   );
 }
 
-export default function ProgressPage() {
-  const { data: analytics, isLoading, isFetching } = useAnalytics();
+function ProgressContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedDeck = searchParams.get("deck") ?? undefined;
+  const { data: analytics, isLoading, isFetching } = useAnalytics(selectedDeck);
   const { data: overview } = useOverviewStats();
+  const { data: decks } = useDecks();
   const [range, setRange] = useState<30 | 90>(30);
+
+  const selectDeck = (deckId: string | null) =>
+    router.replace(deckId ? `/progress?deck=${deckId}` : "/progress", { scroll: false });
+  const filterPill = (active: boolean) =>
+    `rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+      active
+        ? "bg-brand-tint-strong text-brand-dark dark:text-brand-light"
+        : "bg-surface-subtle text-ink-muted hover:text-ink"
+    }`;
 
   if (isLoading) {
     return (
@@ -183,10 +198,32 @@ export default function ProgressPage() {
         </div>
       </div>
 
+      {decks && decks.length > 1 ? (
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => selectDeck(null)} className={filterPill(!selectedDeck)}>
+            All decks
+          </button>
+          {decks.map((deck) => (
+            <button
+              key={deck.id}
+              type="button"
+              onClick={() => selectDeck(deck.id)}
+              className={filterPill(selectedDeck === deck.id)}
+            >
+              {deck.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {!hasData ? (
         <EmptyState
           title="No data yet"
-          hint="Create a deck and run your first review session — this page fills itself in."
+          hint={
+            selectedDeck
+              ? "No activity in this deck yet — review it once and check back."
+              : "Create a deck and run your first review session — this page fills itself in."
+          }
         />
       ) : (
         <>
@@ -195,18 +232,28 @@ export default function ProgressPage() {
             <StatTile
               label="Streak"
               value={`${overview?.streakDays ?? 0}d`}
-              hint={overview && overview.bestStreak > 0 ? `best ${overview.bestStreak}d` : undefined}
-            />
-            <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} />
-            <StatTile
-              label="Decks"
-              value={analytics.totals.decks.toLocaleString()}
               hint={
-                analytics.totals.feynmanSessions > 0
-                  ? `${analytics.totals.feynmanSessions} Feynman sessions`
-                  : undefined
+                overview && overview.bestStreak > 0
+                  ? `best ${overview.bestStreak}d${selectedDeck ? " · all decks" : ""}`
+                  : selectedDeck
+                    ? "all decks"
+                    : undefined
               }
             />
+            <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} />
+            {selectedDeck ? (
+              <StatTile label="Feynman sessions" value={analytics.totals.feynmanSessions.toLocaleString()} />
+            ) : (
+              <StatTile
+                label="Decks"
+                value={analytics.totals.decks.toLocaleString()}
+                hint={
+                  analytics.totals.feynmanSessions > 0
+                    ? `${analytics.totals.feynmanSessions} Feynman sessions`
+                    : undefined
+                }
+              />
+            )}
           </div>
 
           <Card>
@@ -323,6 +370,7 @@ export default function ProgressPage() {
             </CardContent>
           </Card>
 
+          {selectedDeck ? null : (
           <Card>
             <CardContent className="space-y-3">
               <h2 className="font-bold tracking-[-0.01em]">Per deck</h2>
@@ -356,8 +404,18 @@ export default function ProgressPage() {
               </div>
             </CardContent>
           </Card>
+          )}
         </>
       )}
     </div>
+  );
+}
+
+export default function ProgressPage() {
+  // useSearchParams requires a Suspense boundary on statically rendered pages.
+  return (
+    <Suspense fallback={<Skeleton className="h-64" />}>
+      <ProgressContent />
+    </Suspense>
   );
 }
