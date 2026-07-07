@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 
 const NAV = [
   { href: "/", label: "Decks" },
+  { href: "/progress", label: "Progress" },
   { href: "/queue", label: "AI Queue" },
   { href: "/settings", label: "Settings" },
 ];

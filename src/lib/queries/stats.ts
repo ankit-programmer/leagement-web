@@ -22,6 +22,22 @@ export interface DeckStats {
   } | null;
 }
 
+export interface AnalyticsStats {
+  totals: { decks: number; cards: number; reviews: number; feynmanSessions: number };
+  cardsByState: { new: number; learning: number; review: number; relearning: number };
+  reviewsPerDay: Array<{ date: string; count: number }>;
+  retention30d: number | null;
+  calibration: DeckStats["calibration"];
+  perDeck: Array<{ id: string; name: string; cards: number; due: number; retention30d: number | null }>;
+}
+
+export function useAnalytics() {
+  return useQuery({
+    queryKey: ["stats", "analytics"],
+    queryFn: async () => (await api<AnalyticsStats>("/stats/analytics")).data,
+  });
+}
+
 export function useOverviewStats() {
   return useQuery({
     queryKey: ["stats", "overview"],
