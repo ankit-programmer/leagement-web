@@ -39,9 +39,9 @@ function QueueRow({ row }: { row: GeneratedCard }) {
             </div>
           </>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Pill tone="neutral">{row.deckName}</Pill>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             <Button
               variant="ghost"
               aria-label={editing ? "Cancel edit" : "Edit before approving"}
@@ -87,7 +87,7 @@ export default function QueuePage() {
 
   return (
     <div className="animate-fade-up space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <IconBadge>
             <SparklesIcon />

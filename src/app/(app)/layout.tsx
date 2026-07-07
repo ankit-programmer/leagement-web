@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -30,21 +31,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {isReview ? null : (
         <header className="sticky top-0 z-30 border-b border-hairline bg-surface/80 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 font-bold tracking-[-0.01em]">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-6">
+              <Link href="/" className="flex shrink-0 items-center gap-2 font-bold tracking-[-0.01em]">
                 <span className="flex h-8 w-8 items-center justify-center rounded-chip bg-brand-tint">
                   🧠
                 </span>
-                Leagement
+                <span className="hidden sm:inline">Leagement</span>
               </Link>
-              <nav className="flex items-center gap-1">
+              <nav className="flex items-center gap-0.5 sm:gap-1">
                 {NAV.map(({ href, label }) => {
                   const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                   return (
                     <Link
                       key={href}
                       href={href}
-                      className={`rounded-btn px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      className={`whitespace-nowrap rounded-btn px-2.5 py-1.5 text-sm font-semibold transition-colors sm:px-3 ${
                         active
                           ? "bg-surface-subtle text-ink"
                           : "text-ink-muted hover:bg-surface-subtle/60 hover:text-ink"
@@ -56,15 +57,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 })}
               </nav>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <ThemeToggle />
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-btn px-3 py-1.5 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink"
-                title={user?.email}
+                className="rounded-btn p-1.5 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink sm:px-3 sm:py-1.5"
+                title={user?.email ? `Sign out (${user.email})` : "Sign out"}
+                aria-label="Sign out"
               >
-                Sign out
+                <ArrowRightStartOnRectangleIcon className="h-5 w-5 sm:hidden" />
+                <span className="hidden text-sm font-semibold sm:inline">Sign out</span>
               </button>
             </div>
           </div>

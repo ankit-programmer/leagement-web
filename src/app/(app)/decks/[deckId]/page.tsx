@@ -70,7 +70,7 @@ export default function DeckPage() {
           </h1>
           {deck?.description ? <p className="mt-1 text-sm text-ink-muted">{deck.description}</p> : null}
           {counts ? (
-            <div className="mt-2 flex gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {counts.due + counts.learning > 0 ? (
                 <Pill tone="brand">{counts.due + counts.learning} due</Pill>
               ) : null}
@@ -85,7 +85,7 @@ export default function DeckPage() {
             </div>
           ) : null}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="ghost" onClick={() => setEditDeckOpen(true)} aria-label="Edit deck">
             <PencilSquareIcon className="h-4 w-4" />
           </Button>
@@ -160,14 +160,14 @@ export default function DeckPage() {
             const state = STATE_LABEL[card.state] ?? STATE_LABEL[CardState.New];
             return (
               <Card key={card.id}>
-                <CardContent className="flex items-start justify-between gap-4">
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <Markdown>{card.front}</Markdown>
                     <div className="border-l-2 border-hairline pl-3 text-ink-muted">
                       <Markdown>{card.back}</Markdown>
                     </div>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
+                  <div className="flex shrink-0 flex-row-reverse items-center justify-end gap-2 sm:flex-col sm:items-end">
                     <div className="flex gap-1.5">
                       <Pill tone={state.tone}>{state.label}</Pill>
                       {card.suspended ? <Pill tone="danger">suspended</Pill> : null}
