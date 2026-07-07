@@ -25,7 +25,13 @@ export function usePendingGenerated() {
 export function useGenerate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { deckId: string; sourceText?: string; imageUrl?: string; maxCards?: number }) =>
+    mutationFn: async (input: {
+      deckId: string;
+      sourceText?: string;
+      imageUrl?: string;
+      sourceUrl?: string;
+      maxCards?: number;
+    }) =>
       (await api<{ batchId: string; cards: GeneratedCard[] }>("/generations", { method: "POST", body: input }))
         .data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["generated", "pending"] }),

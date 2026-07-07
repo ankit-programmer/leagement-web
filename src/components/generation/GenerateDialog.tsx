@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Textarea } from "@/components/ui/Field";
+import { Input, Textarea } from "@/components/ui/Field";
 import { uploadImage } from "@/lib/firebase";
 import { useGenerate } from "@/lib/queries/generation";
 
@@ -24,6 +24,7 @@ export function GenerateDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [sourceText, setSourceText] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -44,7 +45,8 @@ export function GenerateDialog({
     return () => URL.revokeObjectURL(url);
   }, [image]);
 
-  const canSubmit = sourceText.trim().length >= MIN_CHARS || image !== null;
+  const validUrl = /^https?:\/\/\S+\.\S+/.test(sourceUrl.trim());
+  const canSubmit = sourceText.trim().length >= MIN_CHARS || image !== null || validUrl;
   const busy = uploading || generate.isPending;
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
@@ -70,10 +72,16 @@ export function GenerateDialog({
         }
       }
       generate.mutate(
-        { deckId, sourceText: sourceText.trim() || undefined, imageUrl },
+        {
+          deckId,
+          sourceText: sourceText.trim() || undefined,
+          imageUrl,
+          sourceUrl: validUrl ? sourceUrl.trim() : undefined,
+        },
         {
           onSuccess: () => {
             setSourceText("");
+            setSourceUrl("");
             setImage(null);
             onOpenChange(false);
             router.push(`/queue?deck=${deckId}`);
@@ -91,9 +99,16 @@ export function GenerateDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Generate cards with AI"
-      description="Paste notes or snap a photo of them (a textbook page, a diagram, handwriting). Drafted cards go to the approval queue — nothing enters the deck until you approve it."
+      description="Link a blog post or PDF, paste notes, or snap a photo of them. Drafted cards go to the approval queue — nothing enters the deck until you approve it."
     >
       <form className="space-y-4" onSubmit={submit}>
+        <Input
+          label="Article or PDF link (optional)"
+          type="url"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          placeholder="https://blog.example.com/great-post"
+        />
         <Textarea
           label="Source material"
           value={sourceText}
@@ -103,10 +118,10 @@ export function GenerateDialog({
           maxLength={24_000}
         />
         <p className="text-xs text-ink-faint">
-          {image
-            ? "Image attached — text is optional."
+          {image || validUrl
+            ? `${validUrl ? "Link" : "Image"} attached — text is optional.`
             : sourceText.trim().length < MIN_CHARS
-              ? `Needs at least ${MIN_CHARS} characters of text or an image — ${Math.max(
+              ? `Add a link, an image, or at least ${MIN_CHARS} characters of text — ${Math.max(
                   0,
                   MIN_CHARS - sourceText.trim().length,
                 )} characters to go.`
@@ -164,7 +179,7 @@ export function GenerateDialog({
           <Button
             type="submit"
             busy={busy}
-            busyLabel={uploading ? "Uploading image…" : "Generating…"}
+            busyLabel={uploading ? "Uploading image…" : validUrl ? "Fetching & generating…" : "Generating…"}
             disabled={!canSubmit}
           >
             Generate
