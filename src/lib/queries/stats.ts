@@ -56,6 +56,18 @@ export function useDeckStats(deckId: string) {
   });
 }
 
+export interface MentorNote {
+  headline: string;
+  observations: Array<{ insight: string; action: string }>;
+}
+
+export function useMentorNote() {
+  return useMutation({
+    mutationFn: async (deckId?: string) =>
+      (await api<MentorNote>("/stats/mentor", { method: "POST", body: { deckId } })).data,
+  });
+}
+
 export function useMe() {
   return useQuery({
     queryKey: ["me"],

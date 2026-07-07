@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartBarIcon } from "@heroicons/react/24/outline";
+import { ChartBarIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -10,8 +10,15 @@ import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
 import { useDecks } from "@/lib/queries/decks";
-import { type AnalyticsStats, useAnalytics, useOverviewStats } from "@/lib/queries/stats";
+import {
+  type AnalyticsStats,
+  type MentorNote,
+  useAnalytics,
+  useMentorNote,
+  useOverviewStats,
+} from "@/lib/queries/stats";
 
 /**
  * Card-state palette, validated with the dataviz six-checks script for BOTH
@@ -161,9 +168,15 @@ function ProgressContent() {
   const { data: overview } = useOverviewStats();
   const { data: decks } = useDecks();
   const [range, setRange] = useState<30 | 90>(30);
+  const mentor = useMentorNote();
+  const [note, setNote] = useState<MentorNote | null>(null);
+  const [mentorError, setMentorError] = useState<string | null>(null);
 
-  const selectDeck = (deckId: string | null) =>
+  const selectDeck = (deckId: string | null) => {
+    setNote(null); // a note is scoped to the filter it was asked under
+    setMentorError(null);
     router.replace(deckId ? `/progress?deck=${deckId}` : "/progress", { scroll: false });
+  };
   const filterPill = (active: boolean) =>
     `rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
       active
@@ -191,15 +204,52 @@ function ProgressContent() {
 
   return (
     <div className={`animate-fade-up space-y-6 transition-opacity duration-200 ${isFetching ? "opacity-50" : ""}`}>
-      <div className="flex items-center gap-3">
-        <IconBadge>
-          <ChartBarIcon />
-        </IconBadge>
-        <div>
-          <h1 className="text-2xl font-bold tracking-[-0.025em]">Progress</h1>
-          <p className="mt-0.5 text-sm text-ink-muted">Everything your review history says about you.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <IconBadge>
+            <ChartBarIcon />
+          </IconBadge>
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.025em]">Progress</h1>
+            <p className="mt-0.5 text-sm text-ink-muted">Everything your review history says about you.</p>
+          </div>
         </div>
+        {hasData ? (
+          <Button
+            variant="secondary"
+            busy={mentor.isPending}
+            busyLabel="Reading your data…"
+            onClick={() => {
+              setMentorError(null);
+              mentor.mutate(selectedDeck, {
+                onSuccess: setNote,
+                onError: (e) => setMentorError(e.message),
+              });
+            }}
+          >
+            <SparklesIcon className="h-4 w-4" /> Mentor&apos;s read
+          </Button>
+        ) : null}
       </div>
+
+      {mentorError ? (
+        <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{mentorError}</p>
+      ) : null}
+      {note ? (
+        <Card className="animate-fade-up border-brand/30">
+          <CardContent className="space-y-3">
+            <h2 className="font-bold tracking-[-0.01em]">{note.headline}</h2>
+            <ul className="space-y-2.5">
+              {note.observations.map((obs) => (
+                <li key={obs.insight} className="text-sm">
+                  <p className="text-ink-secondary">{obs.insight}</p>
+                  <p className="mt-0.5 font-semibold text-brand-dark dark:text-brand-light">→ {obs.action}</p>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {decks && decks.length > 1 ? (
         <div className="flex flex-wrap gap-1.5">
