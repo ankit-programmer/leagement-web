@@ -99,6 +99,28 @@ export function useReviewSession(deckId: string) {
     setRevealed(true);
   }, []);
 
+  /** Set the current card aside (suspend) — for material not understood yet;
+   *  grinding it would memorize the answer string without comprehension. */
+  const suspendCurrent = useCallback(async () => {
+    if (!current || grading.current) return;
+    grading.current = true;
+    setError(null);
+    try {
+      await api(`/cards/${current.id}`, { method: "PATCH", body: { suspended: true } });
+      const rest = (queue ?? []).slice(1);
+      setQueue(rest);
+      setRevealed(false);
+      setTypedAnswer("");
+      confidenceRef.current = undefined;
+      shownAt.current = Date.now();
+      if (rest.length === 0) await fetchQueue();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      grading.current = false;
+    }
+  }, [current, queue, fetchQueue]);
+
   const grade = useCallback(
     async (rating: Rating) => {
       if (!current || !revealed || grading.current) return;
@@ -162,6 +184,7 @@ export function useReviewSession(deckId: string) {
     revealed,
     reveal,
     grade,
+    suspendCurrent,
     typedAnswer,
     setTypedAnswer,
     stats,

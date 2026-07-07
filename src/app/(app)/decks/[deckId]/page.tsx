@@ -3,7 +3,9 @@
 import {
   AcademicCapIcon,
   MagnifyingGlassIcon,
+  PauseCircleIcon,
   PencilSquareIcon,
+  PlayCircleIcon,
   PlayIcon,
   PlusIcon,
   SparklesIcon,
@@ -217,6 +219,20 @@ export default function DeckPage() {
                       {card.suspended ? <Pill tone="danger">suspended</Pill> : null}
                     </div>
                     <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        aria-label={card.suspended ? "Resume reviewing this card" : "Suspend this card"}
+                        title={card.suspended ? "Resume reviewing" : "Set aside (suspend)"}
+                        onClick={() =>
+                          updateCard.mutate({ cardId: card.id, patch: { suspended: !card.suspended } })
+                        }
+                      >
+                        {card.suspended ? (
+                          <PlayCircleIcon className="h-4 w-4" />
+                        ) : (
+                          <PauseCircleIcon className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button variant="ghost" onClick={() => setEditing(card)} aria-label="Edit card">
                         <PencilSquareIcon className="h-4 w-4" />
                       </Button>

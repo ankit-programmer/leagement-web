@@ -1,6 +1,6 @@
 "use client";
 
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { PauseCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -78,13 +78,26 @@ export default function ReviewPage() {
         <p className="font-mono text-sm text-ink-muted">
           {session.loading ? "" : finished ? "done" : session.waiting ? "break" : `${session.remaining} left`}
         </p>
-        <Link
-          href={`/decks/${deckId}`}
-          aria-label="End session"
-          className="rounded-chip p-2 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink"
-        >
-          <XMarkIcon className="h-5 w-5" />
-        </Link>
+        <div className="flex items-center gap-1">
+          {current ? (
+            <button
+              type="button"
+              aria-label="Suspend this card — set it aside for later"
+              title="Set aside — I don't understand this yet"
+              onClick={() => session.suspendCurrent()}
+              className="rounded-chip p-2 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink"
+            >
+              <PauseCircleIcon className="h-5 w-5" />
+            </button>
+          ) : null}
+          <Link
+            href={`/decks/${deckId}`}
+            aria-label="End session"
+            className="rounded-chip p-2 text-ink-muted transition-colors hover:bg-surface-subtle hover:text-ink"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-8">
