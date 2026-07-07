@@ -76,7 +76,7 @@ export function GenerateDialog({
             setSourceText("");
             setImage(null);
             onOpenChange(false);
-            router.push("/queue");
+            router.push(`/queue?deck=${deckId}`);
           },
           onError: (e) => setError(e.message),
         },
