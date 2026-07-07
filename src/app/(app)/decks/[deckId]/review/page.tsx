@@ -11,13 +11,25 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useQueryClient } from "@tanstack/react-query";
 import { useReviewSession } from "@/hooks/useReviewSession";
+import { crossedMilestone } from "@/lib/milestones";
+import { useOverviewStats } from "@/lib/queries/stats";
 import type { Confidence } from "@/lib/types";
 
 export default function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const session = useReviewSession(deckId);
   const { revealed, reveal, grade, current, finished, typedAnswer, setTypedAnswer } = session;
+  const queryClient = useQueryClient();
+  const { data: overview } = useOverviewStats();
+
+  // The summary is the moment of reward — refresh streak/total for it.
+  useEffect(() => {
+    if (finished) queryClient.invalidateQueries({ queryKey: ["stats", "overview"] });
+  }, [finished, queryClient]);
+  const milestone =
+    finished && overview ? crossedMilestone(overview.totalReviews, session.stats.reviewed) : null;
 
   // Keyboard-first: pre-reveal 1/2/3 reveal with confidence, space/enter without;
   // post-reveal 1–4 grade. Ignored while typing in the answer box.
@@ -86,6 +98,19 @@ export default function ReviewPage() {
                   <p className="mt-1 text-sm text-ink-muted">
                     &ldquo;Sure&rdquo; answers: {session.stats.sureRecalled}/{session.stats.sureTotal} actually
                     recalled
+                  </p>
+                ) : null}
+                {overview && overview.streakDays > 0 && session.stats.reviewed > 0 ? (
+                  <p className="mt-1 text-sm font-semibold text-ink-secondary">
+                    🔥 {overview.streakDays}-day streak
+                    {overview.streakDays > 1 && overview.streakDays === overview.bestStreak
+                      ? " — personal best!"
+                      : ""}
+                  </p>
+                ) : null}
+                {milestone ? (
+                  <p className="mt-1 text-sm font-semibold text-ink-secondary">
+                    🏅 {milestone.toLocaleString()} reviews all-time
                   </p>
                 ) : null}
               </div>

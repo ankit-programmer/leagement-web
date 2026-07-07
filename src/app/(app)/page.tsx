@@ -27,17 +27,47 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-[-0.025em]">Decks</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            {overview
-              ? `${overview.dueToday} due today · ${overview.reviewsToday} reviewed · ${
-                  overview.streakDays > 0 ? `${overview.streakDays}-day streak` : "start a streak today"
-                }`
-              : "Review what's due, then add what you're learning next."}
+            Review what&apos;s due, then add what you&apos;re learning next.
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon className="h-4 w-4" /> New deck
         </Button>
       </div>
+
+      {overview ? (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-hairline bg-surface px-4 py-3 shadow-card">
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            <span aria-hidden="true">🔥</span>
+            {overview.streakDays > 0 ? `${overview.streakDays}-day streak` : "Start a streak today"}
+            {overview.bestStreak > overview.streakDays ? (
+              <span className="font-normal text-ink-faint">· best {overview.bestStreak}</span>
+            ) : null}
+          </span>
+          <div className="flex min-w-40 flex-1 items-center gap-2">
+            {/* Today's goal is clearing the due queue — retrieval, not time. */}
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-subtle">
+              <div
+                className="h-full rounded-full bg-brand transition-all duration-500"
+                style={{
+                  width: `${
+                    overview.dueToday + overview.reviewsToday > 0
+                      ? Math.round((overview.reviewsToday / (overview.reviewsToday + overview.dueToday)) * 100)
+                      : 100
+                  }%`,
+                }}
+              />
+            </div>
+            <span className="whitespace-nowrap font-mono text-xs text-ink-muted">
+              {overview.dueToday === 0
+                ? overview.reviewsToday > 0
+                  ? "day secured 🔥"
+                  : "all clear"
+                : `${overview.reviewsToday} done · ${overview.dueToday} left`}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

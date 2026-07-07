@@ -8,6 +8,8 @@ export interface OverviewStats {
   dueToday: number;
   reviewsToday: number;
   streakDays: number;
+  bestStreak: number;
+  totalReviews: number;
 }
 
 export interface DeckStats {
