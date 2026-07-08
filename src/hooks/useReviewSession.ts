@@ -22,6 +22,7 @@ export interface SessionStats {
 interface PendingLearning {
   count: number;
   nextDueAt: string | null;
+  newRemainingToday: number;
 }
 
 /**
@@ -34,7 +35,11 @@ interface PendingLearning {
  */
 export function useReviewSession(deckId: string) {
   const [queue, setQueue] = useState<Card[] | null>(null);
-  const [pending, setPending] = useState<PendingLearning>({ count: 0, nextDueAt: null });
+  const [pending, setPending] = useState<PendingLearning>({
+    count: 0,
+    nextDueAt: null,
+    newRemainingToday: 1,
+  });
   const [revealed, setRevealed] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState("");
   const [stats, setStats] = useState<SessionStats>({
@@ -55,10 +60,14 @@ export function useReviewSession(deckId: string) {
     try {
       const { data, meta } = await api<Card[]>(`/decks/${deckId}/review-queue`);
       const counts = meta?.counts as
-        | { pendingLearning?: number; nextLearningDueAt?: string | null }
+        | { pendingLearning?: number; nextLearningDueAt?: string | null; newRemainingToday?: number }
         | undefined;
       setQueue(data);
-      setPending({ count: counts?.pendingLearning ?? 0, nextDueAt: counts?.nextLearningDueAt ?? null });
+      setPending({
+        count: counts?.pendingLearning ?? 0,
+        nextDueAt: counts?.nextLearningDueAt ?? null,
+        newRemainingToday: counts?.newRemainingToday ?? 1,
+      });
       setRevealed(false);
       setTypedAnswer("");
       shownAt.current = Date.now();
@@ -191,6 +200,7 @@ export function useReviewSession(deckId: string) {
     waiting,
     pendingCount: pending.count,
     nextDueAt: pending.nextDueAt,
+    newQuotaExhausted: pending.newRemainingToday === 0,
     finished,
   };
 }

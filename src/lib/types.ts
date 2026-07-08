@@ -58,6 +58,7 @@ export interface Card {
   reps: number;
   lapses: number;
   lastReview: string | null;
+  introducedAt: string | null;
   suspended: boolean;
   createdAt: string;
   updatedAt: string;

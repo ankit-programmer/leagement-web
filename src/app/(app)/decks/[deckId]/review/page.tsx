@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useReviewSession } from "@/hooks/useReviewSession";
 import { crossedMilestone } from "@/lib/milestones";
+import { useDecks } from "@/lib/queries/decks";
 import { useOverviewStats } from "@/lib/queries/stats";
 import type { Confidence } from "@/lib/types";
 
@@ -40,6 +41,8 @@ export default function ReviewPage() {
   const { revealed, reveal, grade, current, finished, typedAnswer, setTypedAnswer } = session;
   const queryClient = useQueryClient();
   const { data: overview } = useOverviewStats();
+  const { data: decksList } = useDecks();
+  const deckHasNew = (decksList?.find((d) => d.id === deckId)?.counts.new ?? 0) > 0;
 
   // The summary is the moment of reward — refresh streak/total for it.
   useEffect(() => {
@@ -150,6 +153,12 @@ export default function ReviewPage() {
                   <p className="mt-1 text-sm text-ink-muted">
                     &ldquo;Sure&rdquo; answers: {session.stats.sureRecalled}/{session.stats.sureTotal} actually
                     recalled
+                  </p>
+                ) : null}
+                {session.newQuotaExhausted && deckHasNew ? (
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Daily new-card limit reached — fresh cards resume tomorrow (protecting your future
+                    review load).
                   </p>
                 ) : null}
                 {overview && overview.streakDays > 0 && session.stats.reviewed > 0 ? (
