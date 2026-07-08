@@ -110,7 +110,7 @@ export default function DashboardPage() {
                           <Pill tone="neutral">All caught up</Pill>
                         ) : null}
                       </div>
-                      {dueNow > 0 || deck.counts.new > 0 ? (
+                      {dueNow > 0 || deck.counts.newAvailable > 0 ? (
                         // Straight into the session without opening the deck —
                         // browsing card fronts first is pre-exposure before retrieval.
                         <Button

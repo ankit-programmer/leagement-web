@@ -77,7 +77,8 @@ export default function DeckPage() {
   }, [focusCardId, deckId, router]);
 
   const allCards = cardsQuery.data?.pages.flatMap((page) => page.data) ?? [];
-  const dueNow = counts ? counts.due + counts.learning + Math.min(counts.new, 20) : 0;
+  // Server-computed and quota-aware — must promise exactly what the session serves.
+  const dueNow = counts ? counts.due + counts.learning + counts.newAvailable : 0;
 
   return (
     <div className="animate-fade-up space-y-6">

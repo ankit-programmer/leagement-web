@@ -16,6 +16,8 @@ export interface User {
 
 export interface DeckCounts {
   new: number;
+  /** New cards a session would actually serve today (daily introduction quota applied). */
+  newAvailable: number;
   learning: number;
   due: number;
   total: number;
