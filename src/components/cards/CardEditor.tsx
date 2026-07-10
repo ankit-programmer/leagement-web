@@ -1,11 +1,111 @@
 "use client";
 
-import { CameraIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import { CameraIcon, PhotoIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
+import { MermaidBlock } from "@/components/ui/MermaidBlock";
+import { api } from "@/lib/api";
 import { uploadImage } from "@/lib/firebase";
+
+/** Describe → AI writes Mermaid → preview → insert as a ```mermaid block. */
+function DiagramDialog({
+  open,
+  onOpenChange,
+  context,
+  onInsert,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Current card text, so the diagram matches what the card teaches. */
+  context: string;
+  onInsert: (mermaid: string) => void;
+}) {
+  const [description, setDescription] = useState("");
+  const [mermaid, setMermaid] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function generate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { data } = await api<{ mermaid: string }>("/diagrams", {
+        method: "POST",
+        body: { description: description.trim(), context: context.trim().slice(0, 4000) || undefined },
+      });
+      setMermaid(data.mermaid);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) {
+          setMermaid(null);
+          setDescription("");
+          setError(null);
+        }
+      }}
+      title="AI diagram"
+      description="Describe the process or relationship to draw — the diagram is stored as editable text inside the card."
+    >
+      <div className="space-y-4">
+        <Textarea
+          label="What should the diagram show?"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="e.g. the lifecycle of a card from New through Learning to Review"
+          maxLength={2000}
+        />
+        {mermaid ? (
+          <div className="rounded-card border border-hairline bg-surface-subtle/50 p-3">
+            <MermaidBlock code={mermaid} />
+          </div>
+        ) : null}
+        {error ? (
+          <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant={mermaid ? "secondary" : "primary"}
+            busy={busy}
+            busyLabel="Drawing…"
+            disabled={description.trim().length < 10}
+            onClick={generate}
+          >
+            {mermaid ? "Regenerate" : "Generate"}
+          </Button>
+          {mermaid ? (
+            <Button
+              type="button"
+              onClick={() => {
+                onInsert(mermaid);
+                onOpenChange(false);
+                setMermaid(null);
+                setDescription("");
+              }}
+            >
+              Insert
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </Dialog>
+  );
+}
 
 /**
  * Front/back markdown field with image attachment: picked files upload to
@@ -20,6 +120,7 @@ function MarkdownField({
   placeholder,
   maxLength,
   onError,
+  diagramContext,
 }: {
   label: string;
   value: string;
@@ -27,11 +128,19 @@ function MarkdownField({
   placeholder: string;
   maxLength: number;
   onError: (message: string | null) => void;
+  /** Full card text handed to the diagram model as grounding. */
+  diagramContext: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [diagramOpen, setDiagramOpen] = useState(false);
+
+  const insertAtCursor = (snippet: string) => {
+    const cursor = textareaRef.current?.selectionStart ?? value.length;
+    onChange(value.slice(0, cursor) + snippet + value.slice(cursor));
+  };
 
   async function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -41,9 +150,7 @@ function MarkdownField({
     setUploading(true);
     try {
       const url = await uploadImage(file, "cards");
-      const snippet = `\n![](${url})\n`;
-      const cursor = textareaRef.current?.selectionStart ?? value.length;
-      onChange(value.slice(0, cursor) + snippet + value.slice(cursor));
+      insertAtCursor(`\n![](${url})\n`);
     } catch (e) {
       onError((e as Error).message);
     } finally {
@@ -91,7 +198,21 @@ function MarkdownField({
         >
           <CameraIcon className="h-4 w-4" /> Camera
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="!px-2 !py-1 text-xs"
+          onClick={() => setDiagramOpen(true)}
+        >
+          <SparklesIcon className="h-4 w-4" /> AI diagram
+        </Button>
       </div>
+      <DiagramDialog
+        open={diagramOpen}
+        onOpenChange={setDiagramOpen}
+        context={diagramContext}
+        onInsert={(mermaid) => insertAtCursor(`\n\`\`\`mermaid\n${mermaid}\n\`\`\`\n`)}
+      />
     </div>
   );
 }
@@ -142,6 +263,7 @@ export function CardEditor({
         placeholder="Why does spacing reviews beat massing them?"
         maxLength={2000}
         onError={setError}
+        diagramContext={`${front}\n\n${back}`}
       />
       <MarkdownField
         label="Back — the answer"
@@ -150,6 +272,7 @@ export function CardEditor({
         placeholder="Markdown supported — attach images below"
         maxLength={5000}
         onError={setError}
+        diagramContext={`${front}\n\n${back}`}
       />
       {error ? (
         <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
