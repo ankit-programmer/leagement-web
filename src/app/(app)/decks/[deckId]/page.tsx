@@ -14,7 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { GenerateDialog } from "@/components/generation/GenerateDialog";
@@ -42,6 +42,60 @@ const STATE_LABEL: Record<number, { label: string; tone: "success" | "warning" |
   [CardState.Relearning]: { label: "relearning", tone: "warning" },
 };
 
+/**
+ * Memoized row: with 50 rows × 2 markdown pipelines each, rows must only
+ * re-render when their card changes — never on parent state (search
+ * keystrokes, dialog toggles). content-visibility lets phones skip painting
+ * below-the-fold rows entirely.
+ */
+const CardRow = memo(function CardRow({
+  card,
+  onEdit,
+  onDelete,
+  onToggleSuspend,
+}: {
+  card: CardType;
+  onEdit: (card: CardType) => void;
+  onDelete: (cardId: string) => void;
+  onToggleSuspend: (card: CardType) => void;
+}) {
+  const state = STATE_LABEL[card.state] ?? STATE_LABEL[CardState.New];
+  return (
+    <Card className="[content-visibility:auto] [contain-intrinsic-size:auto_120px]">
+      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Markdown>{card.front}</Markdown>
+          <div className="border-l-2 border-hairline pl-3 text-ink-muted">
+            <Markdown>{card.back}</Markdown>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-row-reverse items-center justify-end gap-2 sm:flex-col sm:items-end">
+          <div className="flex gap-1.5">
+            <Pill tone={state.tone}>{state.label}</Pill>
+            {card.suspended ? <Pill tone="danger">suspended</Pill> : null}
+          </div>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              aria-label={card.suspended ? "Resume reviewing this card" : "Suspend this card"}
+              title={card.suspended ? "Resume reviewing" : "Set aside (suspend)"}
+              onClick={() => onToggleSuspend(card)}
+            >
+              {card.suspended ? <PlayCircleIcon className="h-4 w-4" /> : <PauseCircleIcon className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" onClick={() => onEdit(card)} aria-label="Edit card">
+              <PencilSquareIcon className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" aria-label="Delete card" onClick={() => onDelete(card.id)}>
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export default function DeckPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const router = useRouter();
@@ -66,6 +120,28 @@ export default function DeckPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
+
+  // Debounce properly: one timer, cleared on every change — the previous
+  // inline setTimeout leaked a timer (and a full-list re-render) per keystroke.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // Stable identities so memoized rows never re-render from parent state.
+  const handleEdit = useCallback((card: CardType) => setEditing(card), []);
+  const handleDelete = useCallback(
+    (cardId: string) => {
+      if (window.confirm("Delete this card? Its review history is kept.")) {
+        deleteCard.mutate(cardId);
+      }
+    },
+    [deleteCard.mutate],
+  );
+  const handleToggleSuspend = useCallback(
+    (card: CardType) => updateCard.mutate({ cardId: card.id, patch: { suspended: !card.suspended } }),
+    [updateCard.mutate],
+  );
 
   // Deep link (?card=<id>) from the Progress trouble list straight into the
   // editor — fetched by id so pagination depth doesn't matter.
@@ -171,11 +247,7 @@ export default function DeckPage() {
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
           <Input
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              const value = event.target.value.trim();
-              window.setTimeout(() => setDebouncedSearch(value), 300);
-            }}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search cards…"
             className="pl-9"
           />
@@ -233,57 +305,15 @@ export default function DeckPage() {
             cardsQuery.isFetching && !cardsQuery.isFetchingNextPage ? "opacity-50" : ""
           }`}
         >
-          {allCards.map((card) => {
-            const state = STATE_LABEL[card.state] ?? STATE_LABEL[CardState.New];
-            return (
-              <Card key={card.id}>
-                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <Markdown>{card.front}</Markdown>
-                    <div className="border-l-2 border-hairline pl-3 text-ink-muted">
-                      <Markdown>{card.back}</Markdown>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-row-reverse items-center justify-end gap-2 sm:flex-col sm:items-end">
-                    <div className="flex gap-1.5">
-                      <Pill tone={state.tone}>{state.label}</Pill>
-                      {card.suspended ? <Pill tone="danger">suspended</Pill> : null}
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        aria-label={card.suspended ? "Resume reviewing this card" : "Suspend this card"}
-                        title={card.suspended ? "Resume reviewing" : "Set aside (suspend)"}
-                        onClick={() =>
-                          updateCard.mutate({ cardId: card.id, patch: { suspended: !card.suspended } })
-                        }
-                      >
-                        {card.suspended ? (
-                          <PlayCircleIcon className="h-4 w-4" />
-                        ) : (
-                          <PauseCircleIcon className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button variant="ghost" onClick={() => setEditing(card)} aria-label="Edit card">
-                        <PencilSquareIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        aria-label="Delete card"
-                        onClick={() => {
-                          if (window.confirm("Delete this card? Its review history is kept.")) {
-                            deleteCard.mutate(card.id);
-                          }
-                        }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {allCards.map((card) => (
+            <CardRow
+              key={card.id}
+              card={card}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggleSuspend={handleToggleSuspend}
+            />
+          ))}
           {cardsQuery.hasNextPage ? (
             <div className="flex justify-center pt-2">
               <Button
