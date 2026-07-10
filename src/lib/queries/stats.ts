@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
 import type { User } from "../types";
 
@@ -65,6 +66,7 @@ export function useMentorNote() {
   return useMutation({
     mutationFn: async (deckId?: string) =>
       (await api<MentorNote>("/stats/mentor", { method: "POST", body: { deckId } })).data,
+    onSuccess: (_note, deckId) => track("mentor_requested", { deckScoped: Boolean(deckId) }),
   });
 }
 
@@ -80,7 +82,8 @@ export function useUpdateMe() {
   return useMutation({
     mutationFn: async (patch: Partial<Pick<User, "timezone" | "dayStartHour" | "retentionTarget" | "aiProvider" | "aiModel" | "newCardsPerDay">>) =>
       (await api<User>("/auth/me", { method: "PATCH", body: patch })).data,
-    onSuccess: (user) => {
+    onSuccess: (user, patch) => {
+      track("settings_changed", { fields: Object.keys(patch) });
       queryClient.setQueryData(["me"], user);
       queryClient.invalidateQueries({ queryKey: ["decks"] }); // day boundary may have moved
       queryClient.invalidateQueries({ queryKey: ["stats"] });

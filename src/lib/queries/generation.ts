@@ -1,7 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
+
+/** Which input drove the generation — the interesting product question. */
+function generationSource(input: { sourceText?: string; imageUrl?: string; sourceUrl?: string }) {
+  if (input.sourceUrl) return "url";
+  if (input.imageUrl) return "image";
+  return "text";
+}
 
 export interface GeneratedCard {
   id: string;
@@ -34,7 +42,12 @@ export function useGenerate() {
     }) =>
       (await api<{ batchId: string; cards: GeneratedCard[] }>("/generations", { method: "POST", body: input }))
         .data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["generated", "pending"] }),
+    onMutate: (input) => track("generation_requested", { source: generationSource(input) }),
+    onSuccess: (data, input) => {
+      track("generation_succeeded", { source: generationSource(input), cards: data.cards.length });
+      queryClient.invalidateQueries({ queryKey: ["generated", "pending"] });
+    },
+    onError: (_error, input) => track("generation_failed", { source: generationSource(input) }),
   });
 }
 
@@ -66,6 +79,8 @@ export function useDecideGenerated() {
     onError: (_error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["generated", "pending"], context.previous);
     },
+    onSuccess: (_row, { action, front, back }) =>
+      track("generated_card_decided", { action, edited: front !== undefined || back !== undefined }),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["generated", "pending"] });
       queryClient.invalidateQueries({ queryKey: ["decks"] });
@@ -79,7 +94,8 @@ export function useBulkDecide() {
   return useMutation({
     mutationFn: async (input: { ids: string[]; action: "approve" | "reject" }) =>
       (await api<{ decided: number }>("/generated-cards/bulk", { method: "POST", body: input })).data,
-    onSuccess: () => {
+    onSuccess: (data, { action }) => {
+      track("generated_cards_bulk", { action, count: data.decided });
       queryClient.invalidateQueries({ queryKey: ["generated", "pending"] });
       queryClient.invalidateQueries({ queryKey: ["decks"] });
       queryClient.invalidateQueries({ queryKey: ["cards"] });

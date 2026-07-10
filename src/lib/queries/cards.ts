@@ -1,6 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
 import type { Card } from "../types";
 
@@ -29,7 +30,10 @@ export function useCreateCard(deckId: string) {
   return useMutation({
     mutationFn: async (input: { front: string; back: string; imageUrl?: string }) =>
       (await api<Card>(`/decks/${deckId}/cards`, { method: "POST", body: input })).data,
-    onSuccess: () => invalidateCardData(queryClient, deckId),
+    onSuccess: (_card, input) => {
+      track("card_created", { via: "manual", hasImage: Boolean(input.imageUrl) });
+      invalidateCardData(queryClient, deckId);
+    },
   });
 }
 
@@ -43,7 +47,14 @@ export function useUpdateCard(deckId: string) {
       cardId: string;
       patch: { front?: string; back?: string; imageUrl?: string | null; suspended?: boolean };
     }) => (await api<Card>(`/cards/${cardId}`, { method: "PATCH", body: patch })).data,
-    onSuccess: () => invalidateCardData(queryClient, deckId),
+    onSuccess: (_card, { patch }) => {
+      if (patch.suspended !== undefined) {
+        track("card_suspended", { suspended: patch.suspended, from: "deck" });
+      } else {
+        track("card_updated");
+      }
+      invalidateCardData(queryClient, deckId);
+    },
   });
 }
 
@@ -51,6 +62,9 @@ export function useDeleteCard(deckId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (cardId: string) => api(`/cards/${cardId}`, { method: "DELETE" }),
-    onSuccess: () => invalidateCardData(queryClient, deckId),
+    onSuccess: () => {
+      track("card_deleted");
+      invalidateCardData(queryClient, deckId);
+    },
   });
 }

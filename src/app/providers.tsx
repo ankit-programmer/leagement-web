@@ -2,10 +2,15 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { initAnalytics } from "@/lib/analytics";
 import { AuthProvider } from "@/lib/auth";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

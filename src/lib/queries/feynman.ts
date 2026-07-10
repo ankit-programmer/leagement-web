@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
 
 export interface FeynmanCritique {
@@ -33,6 +34,7 @@ export function useSuggestTopics() {
   return useMutation({
     mutationFn: async (deckId: string) =>
       (await api<{ topics: string[] }>(`/decks/${deckId}/feynman-topics`)).data.topics,
+    onSuccess: () => track("feynman_topics_suggested"),
   });
 }
 
@@ -41,6 +43,9 @@ export function useSubmitExplanation(deckId: string) {
   return useMutation({
     mutationFn: async (input: { topic: string; explanation: string; parentId?: string }) =>
       (await api<FeynmanSession>("/feynman", { method: "POST", body: { deckId, ...input } })).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feynman", deckId] }),
+    onSuccess: (session) => {
+      track("feynman_submitted", { revision: session.revision, rating: session.rating });
+      queryClient.invalidateQueries({ queryKey: ["feynman", deckId] });
+    },
   });
 }

@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { identifyUser, resetAnalytics } from "./analytics";
 import { api, getToken, registerUnauthorizedHandler, setToken } from "./api";
 import type { User } from "./types";
 
@@ -24,7 +25,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Ties analytics to the account regardless of how the user arrived
+  // (fresh login or token already in localStorage).
+  useEffect(() => {
+    if (user) identifyUser(user.id, { email: user.email, name: user.name ?? undefined });
+  }, [user]);
+
   const logout = useCallback(() => {
+    resetAnalytics();
     setToken(null);
     setTokenState(null);
     setUser(null);

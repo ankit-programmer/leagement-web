@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
 import type { Deck, DeckWithCounts } from "../types";
 
@@ -23,7 +24,10 @@ export function useCreateDeck() {
   return useMutation({
     mutationFn: async (input: { name: string; description?: string }) =>
       (await api<Deck>("/decks", { method: "POST", body: input })).data,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["decks"] }),
+    onSuccess: () => {
+      track("deck_created");
+      queryClient.invalidateQueries({ queryKey: ["decks"] });
+    },
   });
 }
 
@@ -43,6 +47,9 @@ export function useDeleteDeck() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (deckId: string) => api(`/decks/${deckId}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["decks"] }),
+    onSuccess: () => {
+      track("deck_deleted");
+      queryClient.invalidateQueries({ queryKey: ["decks"] });
+    },
   });
 }

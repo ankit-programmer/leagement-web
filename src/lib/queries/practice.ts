@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { track } from "../analytics";
 import { api } from "../api";
 import type { Card } from "../types";
 
@@ -20,6 +21,9 @@ export function useCreatePractice(deckId: string) {
   return useMutation({
     mutationFn: async (request: string) =>
       (await api<PracticeSession>("/practice-sessions", { method: "POST", body: { deckId, request } })).data,
-    onSuccess: (session) => queryClient.setQueryData(["practice", deckId], session),
+    onSuccess: (session) => {
+      track("practice_created", { cards: session.cards.length });
+      queryClient.setQueryData(["practice", deckId], session);
+    },
   });
 }

@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analytics";
 import { api } from "@/lib/api";
 import type { Card, Confidence, Rating, ReviewLog } from "@/lib/types";
 
@@ -55,7 +56,10 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
   const confidenceRef = useRef<Confidence | undefined>(undefined);
   const requeues = useRef(new Map<string, number>());
   const grading = useRef(false);
+  const sessionStartTracked = useRef(false);
+  const sessionEndTracked = useRef(false);
   const queryClient = useQueryClient();
+  const mode = isPractice ? "practice" : "review";
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -79,6 +83,8 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
   }, [deckId]);
 
   useEffect(() => {
+    sessionStartTracked.current = false;
+    sessionEndTracked.current = false;
     setStats({ reviewed: 0, again: 0, startedAt: Date.now(), sureRecalled: 0, sureTotal: 0 });
     if (isPractice) {
       // Practice: the AI-selected cards were stashed by useCreatePractice.
@@ -97,6 +103,29 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
   const current = queue?.[0] ?? null;
   const waiting = !isPractice && queue !== null && queue.length === 0 && pending.count > 0;
   const finished = queue !== null && queue.length === 0 && (isPractice || pending.count === 0);
+
+  // Session boundaries for product analytics — once per session each.
+  // "Started" means cards were actually shown, not that the page opened.
+  useEffect(() => {
+    if (queue !== null && queue.length > 0 && !sessionStartTracked.current) {
+      sessionStartTracked.current = true;
+      track("review_session_started", { mode, cards: queue.length });
+    }
+  }, [queue, mode]);
+
+  useEffect(() => {
+    if (finished && stats.reviewed > 0 && !sessionEndTracked.current) {
+      sessionEndTracked.current = true;
+      track("review_session_completed", {
+        mode,
+        reviewed: stats.reviewed,
+        again: stats.again,
+        sureRecalled: stats.sureRecalled,
+        sureTotal: stats.sureTotal,
+        minutes: Math.round((Date.now() - stats.startedAt) / 60_000),
+      });
+    }
+  }, [finished, stats, mode]);
 
   // Auto-resume: when the next learning card lands, pull the fresh queue.
   useEffect(() => {
@@ -128,6 +157,7 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
     setError(null);
     try {
       await api(`/cards/${current.id}`, { method: "PATCH", body: { suspended: true } });
+      track("card_suspended", { suspended: true, from: "review" });
       const rest = (queue ?? []).slice(1);
       setQueue(rest);
       setRevealed(false);
@@ -161,6 +191,13 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
           },
         });
         const updated = data.card;
+        track("card_graded", {
+          mode,
+          rating,
+          confidence: confidence ?? null,
+          typed: typedAnswer.trim().length > 0,
+          preState: current.state,
+        });
         setStats((s) => ({
           ...s,
           reviewed: s.reviewed + 1,
@@ -194,7 +231,7 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
         grading.current = false;
       }
     },
-    [current, revealed, typedAnswer, queue, fetchQueue, isPractice],
+    [current, revealed, typedAnswer, queue, fetchQueue, isPractice, mode],
   );
 
   return {
