@@ -2,6 +2,7 @@
 
 import {
   AcademicCapIcon,
+  BoltIcon,
   MagnifyingGlassIcon,
   PauseCircleIcon,
   PencilSquareIcon,
@@ -17,6 +18,7 @@ import { useEffect, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { GenerateDialog } from "@/components/generation/GenerateDialog";
+import { PracticeDialog } from "@/components/review/PracticeDialog";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
@@ -61,6 +63,7 @@ export default function DeckPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [practiceOpen, setPracticeOpen] = useState(false);
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
 
@@ -151,6 +154,9 @@ export default function DeckPage() {
           </Button>
           <Button variant="secondary" onClick={() => setAddOpen(true)}>
             <PlusIcon className="h-4 w-4" /> Add cards
+          </Button>
+          <Button variant="secondary" onClick={() => setPracticeOpen(true)}>
+            <BoltIcon className="h-4 w-4" /> Practice
           </Button>
           <Link href={`/decks/${deckId}/review`}>
             <Button disabled={!dueNow}>
@@ -294,6 +300,7 @@ export default function DeckPage() {
       )}
 
       <GenerateDialog deckId={deckId} open={generateOpen} onOpenChange={setGenerateOpen} />
+      <PracticeDialog deckId={deckId} open={practiceOpen} onOpenChange={setPracticeOpen} />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen} title="Add a card">
         <CardEditor

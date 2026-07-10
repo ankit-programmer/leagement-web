@@ -33,7 +33,8 @@ interface PendingLearning {
  * break with a comeback time) rather than a false "session complete" — the
  * hook auto-refetches when the next card lands.
  */
-export function useReviewSession(deckId: string) {
+export function useReviewSession(deckId: string, options: { practice?: boolean } = {}) {
+  const isPractice = options.practice === true;
   const [queue, setQueue] = useState<Card[] | null>(null);
   const [pending, setPending] = useState<PendingLearning>({
     count: 0,
@@ -79,12 +80,23 @@ export function useReviewSession(deckId: string) {
 
   useEffect(() => {
     setStats({ reviewed: 0, again: 0, startedAt: Date.now(), sureRecalled: 0, sureTotal: 0 });
+    if (isPractice) {
+      // Practice: the AI-selected cards were stashed by useCreatePractice.
+      const stash = queryClient.getQueryData<{ cards: Card[] }>(["practice", deckId]);
+      if (stash && stash.cards.length > 0) {
+        setQueue(stash.cards);
+        shownAt.current = Date.now();
+      } else {
+        setError("Practice session expired — go back to the deck and start a new one.");
+      }
+      return;
+    }
     fetchQueue();
-  }, [fetchQueue]);
+  }, [fetchQueue, isPractice, queryClient, deckId]);
 
   const current = queue?.[0] ?? null;
-  const waiting = queue !== null && queue.length === 0 && pending.count > 0;
-  const finished = queue !== null && queue.length === 0 && pending.count === 0;
+  const waiting = !isPractice && queue !== null && queue.length === 0 && pending.count > 0;
+  const finished = queue !== null && queue.length === 0 && (isPractice || pending.count === 0);
 
   // Auto-resume: when the next learning card lands, pull the fresh queue.
   useEffect(() => {
@@ -174,14 +186,15 @@ export function useReviewSession(deckId: string) {
         shownAt.current = Date.now();
         // Local queue drained: ask the server what's really left (cards whose
         // learning step elapsed meanwhile, requeue-capped cards, pending info).
-        if (nextQueue.length === 0) await fetchQueue();
+        // Practice sessions end when their selection is done — no refill.
+        if (nextQueue.length === 0 && !isPractice) await fetchQueue();
       } catch (e) {
         setError((e as Error).message);
       } finally {
         grading.current = false;
       }
     },
-    [current, revealed, typedAnswer, queue, fetchQueue],
+    [current, revealed, typedAnswer, queue, fetchQueue, isPractice],
   );
 
   return {

@@ -2,7 +2,7 @@
 
 import { PauseCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ConfidenceBar } from "@/components/review/ConfidenceBar";
 import { GradeBar } from "@/components/review/GradeBar";
@@ -37,12 +37,17 @@ function Countdown({ dueAt }: { dueAt: string }) {
 
 export default function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
-  const session = useReviewSession(deckId);
+  const searchParams = useSearchParams();
+  const isPractice = searchParams.get("mode") === "practice";
+  const session = useReviewSession(deckId, { practice: isPractice });
   const { revealed, reveal, grade, current, finished, typedAnswer, setTypedAnswer } = session;
   const queryClient = useQueryClient();
   const { data: overview } = useOverviewStats();
   const { data: decksList } = useDecks();
   const deckHasNew = (decksList?.find((d) => d.id === deckId)?.counts.new ?? 0) > 0;
+  const practiceTitle = isPractice
+    ? queryClient.getQueryData<{ title: string }>(["practice", deckId])?.title
+    : undefined;
 
   // The summary is the moment of reward — refresh streak/total for it.
   useEffect(() => {
@@ -78,7 +83,8 @@ export default function ReviewPage() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 py-6">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-sm text-ink-muted">
+        <p className="truncate font-mono text-sm text-ink-muted">
+          {isPractice ? `⚡ ${practiceTitle ?? "practice"} · ` : ""}
           {session.loading ? "" : finished ? "done" : session.waiting ? "break" : `${session.remaining} left`}
         </p>
         <div className="flex items-center gap-1">
