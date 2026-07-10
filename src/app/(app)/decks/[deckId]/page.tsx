@@ -17,6 +17,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
+import { DeleteDeckDialog } from "@/components/decks/DeleteDeckDialog";
 import { GenerateDialog } from "@/components/generation/GenerateDialog";
 import { PracticeDialog } from "@/components/review/PracticeDialog";
 import { Button } from "@/components/ui/Button";
@@ -120,6 +121,7 @@ export default function DeckPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
+  const [deleteDeckOpen, setDeleteDeckOpen] = useState(false);
 
   // Debounce properly: one timer, cleared on every change — the previous
   // inline setTimeout leaked a timer (and a full-list re-render) per keystroke.
@@ -209,15 +211,7 @@ export default function DeckPage() {
           <Button variant="ghost" onClick={() => setEditDeckOpen(true)} aria-label="Edit deck">
             <PencilSquareIcon className="h-4 w-4" />
           </Button>
-          <Button
-            variant="danger"
-            aria-label="Delete deck"
-            onClick={() => {
-              if (window.confirm(`Delete deck "${deck?.name}"? Cards stop appearing but review history is kept.`)) {
-                deleteDeck.mutate(deckId, { onSuccess: () => router.push("/") });
-              }
-            }}
-          >
+          <Button variant="danger" aria-label="Delete deck" onClick={() => setDeleteDeckOpen(true)}>
             <TrashIcon className="h-4 w-4" />
           </Button>
           <Link href={`/decks/${deckId}/feynman`}>
@@ -331,6 +325,15 @@ export default function DeckPage() {
 
       <GenerateDialog deckId={deckId} open={generateOpen} onOpenChange={setGenerateOpen} />
       <PracticeDialog deckId={deckId} open={practiceOpen} onOpenChange={setPracticeOpen} />
+      {deck ? (
+        <DeleteDeckDialog
+          deck={deck}
+          open={deleteDeckOpen}
+          onOpenChange={setDeleteDeckOpen}
+          busy={deleteDeck.isPending}
+          onConfirm={() => deleteDeck.mutate(deckId, { onSuccess: () => router.push("/") })}
+        />
+      ) : null}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen} title="Add a card">
         <CardEditor
