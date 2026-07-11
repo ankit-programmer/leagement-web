@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const { data: me, isLoading } = useMe();
   const updateMe = useUpdateMe();
 
-  const [timezone, setTimezone] = useState("UTC");
+  const [timezone, setTimezone] = useState("Asia/Calcutta");
   // Number fields keep their STRING while editing — a controlled number input
   // that parses on every keystroke turns a cleared field into a sticky "0"
   // (Number("") === 0). Parsed + validated on save instead.
