@@ -11,6 +11,7 @@ import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { REVIEW_MILESTONES } from "@/lib/milestones";
 import { useDecks } from "@/lib/queries/decks";
 import {
   type AnalyticsStats,
@@ -348,6 +349,15 @@ function ProgressContent() {
   const [note, setNote] = useState<MentorNote | null>(null);
   const [mentorError, setMentorError] = useState<string | null>(null);
 
+  const nextMilestone = analytics
+    ? REVIEW_MILESTONES.find((milestone) => milestone > analytics.totals.reviews)
+    : undefined;
+  const activeDaysLast7 = analytics
+    ? analytics.reviewsPerDay.filter(
+        (day) => new Date(`${day.date}T12:00:00Z`).getTime() >= Date.now() - 7 * 86_400_000,
+      ).length
+    : 0;
+
   const selectDeck = (deckId: string | null) => {
     setNote(null); // a note is scoped to the filter it was asked under
     setMentorError(null);
@@ -458,20 +468,40 @@ function ProgressContent() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile label="Reviews all-time" value={analytics.totals.reviews.toLocaleString()} />
+            <StatTile
+              label="Reviews all-time"
+              value={analytics.totals.reviews.toLocaleString()}
+              hint={
+                nextMilestone !== undefined
+                  ? `${(nextMilestone - analytics.totals.reviews).toLocaleString()} to ${nextMilestone.toLocaleString()}`
+                  : undefined
+              }
+            />
             <StatTile
               label="Streak"
               value={`${overview?.streakDays ?? 0}d`}
               delay={60}
-              hint={
+              hint={[
                 overview && overview.bestStreak > 0
                   ? `best ${overview.bestStreak}d${selectedDeck ? " · all decks" : ""}`
                   : selectedDeck
                     ? "all decks"
-                    : undefined
-              }
+                    : null,
+                `active ${activeDaysLast7} of last 7 days`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             />
-            <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} delay={120} />
+            {analytics.totals.mastered !== undefined ? (
+              <StatTile
+                label="Mastered"
+                value={`${analytics.totals.mastered.toLocaleString()} / ${analytics.totals.cards.toLocaleString()}`}
+                delay={120}
+                hint="recalled on 3+ separate days"
+              />
+            ) : (
+              <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} delay={120} />
+            )}
             {selectedDeck ? (
               <StatTile
                 label="Feynman sessions"
@@ -543,6 +573,30 @@ function ProgressContent() {
             <CardContent className="space-y-4">
               <h2 className="font-bold tracking-[-0.01em]">Collection maturity</h2>
               <MaturityBar cardsByState={analytics.cardsByState} />
+              {analytics.durability?.medianDaysNow != null ? (
+                <p className="text-sm text-ink-secondary">
+                  Typical card strength:{" "}
+                  <span className="font-mono font-bold">~{analytics.durability.medianDaysNow}d</span> between
+                  reviews
+                  {analytics.durability.medianDays30dAgo != null &&
+                  analytics.durability.medianDays30dAgo !== analytics.durability.medianDaysNow ? (
+                    <span
+                      className={
+                        analytics.durability.medianDaysNow > analytics.durability.medianDays30dAgo
+                          ? "text-success-ink"
+                          : "text-warning-ink"
+                      }
+                    >
+                      {" "}
+                      {analytics.durability.medianDaysNow > analytics.durability.medianDays30dAgo ? "▲" : "▼"}{" "}
+                      from ~{analytics.durability.medianDays30dAgo}d a month ago
+                    </span>
+                  ) : null}{" "}
+                  <span className="text-xs text-ink-faint">
+                    — spacing at work: the longer a card holds, the less often you need it.
+                  </span>
+                </p>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -577,6 +631,31 @@ function ProgressContent() {
                   </ul>
                 </>
               )}
+              {analytics.comebacks && analytics.comebacks.count > 0 ? (
+                <div className="border-t border-hairline pt-3">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-success-ink">
+                    Conquered ({analytics.comebacks.count})
+                  </h3>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    Cards that used to beat you and now hold a 3+ week interval — struggle resolves.
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {analytics.comebacks.cards.map((card) => (
+                      <li key={card.id} className="flex items-center justify-between gap-3">
+                        <Link
+                          href={`/decks/${card.deckId}?card=${card.id}`}
+                          className="min-w-0 flex-1 truncate text-sm text-ink-secondary hover:text-ink"
+                        >
+                          {card.front}
+                        </Link>
+                        <Pill tone="success">
+                          {card.lapses}× lapsed → {Math.round(card.stability)}d strong
+                        </Pill>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -623,6 +702,7 @@ function ProgressContent() {
                     <tr className="border-b border-hairline text-left text-[11px] font-bold uppercase tracking-[0.06em] text-ink-muted">
                       <th className="py-2 pr-4">Deck</th>
                       <th className="py-2 pr-4 text-right">Cards</th>
+                      <th className="py-2 pr-4 text-right">Mastered</th>
                       <th className="py-2 pr-4 text-right">Due</th>
                       <th className="py-2 text-right">Retention 30d</th>
                     </tr>
@@ -636,6 +716,7 @@ function ProgressContent() {
                           </Link>
                         </td>
                         <td className="py-2 pr-4 text-right font-mono">{deck.cards}</td>
+                        <td className="py-2 pr-4 text-right font-mono">{deck.mastered ?? "—"}</td>
                         <td className="py-2 pr-4 text-right font-mono">{deck.due}</td>
                         <td className="py-2 text-right font-mono">
                           {deck.retention30d !== null ? `${Math.round(deck.retention30d * 100)}%` : "—"}

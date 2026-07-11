@@ -24,12 +24,27 @@ export interface DeckStats {
 }
 
 export interface AnalyticsStats {
-  totals: { decks: number; cards: number; reviews: number; feynmanSessions: number };
+  /** `mastered` is absent until the API deploy that computes it (deploy skew). */
+  totals: { decks: number; cards: number; reviews: number; feynmanSessions: number; mastered?: number };
   cardsByState: { new: number; learning: number; review: number; relearning: number };
   reviewsPerDay: Array<{ date: string; count: number }>;
   retention30d: number | null;
   calibration: DeckStats["calibration"];
-  perDeck: Array<{ id: string; name: string; cards: number; due: number; retention30d: number | null }>;
+  perDeck: Array<{
+    id: string;
+    name: string;
+    cards: number;
+    due: number;
+    retention30d: number | null;
+    mastered?: number;
+  }>;
+  /** Median FSRS stability (days) now vs a month ago; null under sample floors. */
+  durability?: { medianDaysNow: number | null; medianDays30dAgo: number | null };
+  /** Formerly-struggling cards now going strong. */
+  comebacks?: {
+    count: number;
+    cards: Array<{ id: string; deckId: string; front: string; lapses: number; stability: number }>;
+  };
   upcomingWeek: Array<{ date: string; count: number }>;
   troubleCards: Array<{ id: string; deckId: string; front: string; lapses: number; sureWrong: boolean }>;
   effort: { avgSeconds: number | null; minutesToday: number | null };
