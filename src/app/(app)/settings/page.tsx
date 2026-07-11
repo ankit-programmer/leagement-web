@@ -19,9 +19,12 @@ export default function SettingsPage() {
   const updateMe = useUpdateMe();
 
   const [timezone, setTimezone] = useState("UTC");
-  const [dayStartHour, setDayStartHour] = useState(4);
+  // Number fields keep their STRING while editing — a controlled number input
+  // that parses on every keystroke turns a cleared field into a sticky "0"
+  // (Number("") === 0). Parsed + validated on save instead.
+  const [dayStartHour, setDayStartHour] = useState("4");
   const [retention, setRetention] = useState(0.9);
-  const [newPerDay, setNewPerDay] = useState(20);
+  const [newPerDay, setNewPerDay] = useState("20");
   const [aiModel, setAiModel] = useState("");
   const [dialCode, setDialCode] = useState("91");
   const [nationalNumber, setNationalNumber] = useState("");
@@ -42,9 +45,9 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!me) return;
     setTimezone(me.timezone);
-    setDayStartHour(me.dayStartHour);
+    setDayStartHour(String(me.dayStartHour));
     setRetention(me.retentionTarget);
-    setNewPerDay(me.newCardsPerDay);
+    setNewPerDay(String(me.newCardsPerDay));
     setAiModel(me.aiModel ?? "");
     const { dial, national } = splitPhone(me.phone);
     setDialCode(dial);
@@ -86,12 +89,22 @@ export default function SettingsPage() {
                 setError("Add your WhatsApp number (6–12 digits) to enable the coach.");
                 return;
               }
+              const parsedDayStart = Number(dayStartHour);
+              if (!Number.isInteger(parsedDayStart) || parsedDayStart < 0 || parsedDayStart > 23) {
+                setError("Day start hour must be a number between 0 and 23.");
+                return;
+              }
+              const parsedNewPerDay = Number(newPerDay);
+              if (!Number.isInteger(parsedNewPerDay) || parsedNewPerDay < 0 || parsedNewPerDay > 500) {
+                setError("New cards per day must be a number between 0 and 500.");
+                return;
+              }
               updateMe.mutate(
                 {
                   timezone,
-                  dayStartHour,
+                  dayStartHour: parsedDayStart,
                   retentionTarget: retention,
-                  newCardsPerDay: newPerDay,
+                  newCardsPerDay: parsedNewPerDay,
                   aiModel: aiModel.trim() || null,
                   // Old APIs reject unknown fields (strict schema) — only send when supported.
                   ...(coachSupported ? { phone: national ? `${dialCode}${national}` : null, coachEnabled } : {}),
@@ -129,7 +142,7 @@ export default function SettingsPage() {
               min={0}
               max={23}
               value={dayStartHour}
-              onChange={(e) => setDayStartHour(Number(e.target.value))}
+              onChange={(e) => setDayStartHour(e.target.value)}
             />
 
             <label className="block space-y-1.5">
@@ -156,7 +169,7 @@ export default function SettingsPage() {
               min={0}
               max={500}
               value={newPerDay}
-              onChange={(e) => setNewPerDay(Number(e.target.value))}
+              onChange={(e) => setNewPerDay(e.target.value)}
             />
 
             <Input
