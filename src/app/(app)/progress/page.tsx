@@ -4,14 +4,19 @@ import { ChartBarIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CardEditor } from "@/components/cards/CardEditor";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { api } from "@/lib/api";
 import { REVIEW_MILESTONES } from "@/lib/milestones";
+import { useUpdateCard } from "@/lib/queries/cards";
 import { useDecks } from "@/lib/queries/decks";
 import {
   type AnalyticsStats,
@@ -21,6 +26,7 @@ import {
   useMentorNote,
   useOverviewStats,
 } from "@/lib/queries/stats";
+import type { Card as CardType } from "@/lib/types";
 
 /**
  * Card-state palette, validated with the dataviz six-checks script for BOTH
@@ -348,6 +354,17 @@ function ProgressContent() {
   const mentor = useMentorNote();
   const [note, setNote] = useState<MentorNote | null>(null);
   const [mentorError, setMentorError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // In-place card editing (trouble + conquered lists): same machinery as the
+  // deck page's ?card= deep link, minus the navigation away from the stats.
+  const [editing, setEditing] = useState<CardType | null>(null);
+  const updateCard = useUpdateCard(editing?.deckId ?? "");
+  const openCardEditor = (cardId: string) => {
+    api<CardType>(`/cards/${cardId}`)
+      .then(({ data }) => setEditing(data))
+      .catch(() => undefined);
+  };
 
   const nextMilestone = analytics
     ? REVIEW_MILESTONES.find((milestone) => milestone > analytics.totals.reviews)
@@ -614,12 +631,13 @@ function ProgressContent() {
                   <ul className="space-y-2">
                     {analytics.troubleCards.map((card) => (
                       <li key={card.id} className="flex items-center justify-between gap-3">
-                        <Link
-                          href={`/decks/${card.deckId}?card=${card.id}`}
-                          className="min-w-0 flex-1 truncate text-sm text-ink-secondary hover:text-ink"
+                        <button
+                          type="button"
+                          onClick={() => openCardEditor(card.id)}
+                          className="min-w-0 flex-1 truncate text-left text-sm text-ink-secondary transition-colors hover:text-ink"
                         >
                           {card.front}
-                        </Link>
+                        </button>
                         <span className="flex shrink-0 items-center gap-1.5">
                           {card.sureWrong ? <Pill tone="danger">sure but wrong</Pill> : null}
                           {card.lapses > 0 ? (
@@ -642,12 +660,13 @@ function ProgressContent() {
                   <ul className="mt-2 space-y-2">
                     {analytics.comebacks.cards.map((card) => (
                       <li key={card.id} className="flex items-center justify-between gap-3">
-                        <Link
-                          href={`/decks/${card.deckId}?card=${card.id}`}
-                          className="min-w-0 flex-1 truncate text-sm text-ink-secondary hover:text-ink"
+                        <button
+                          type="button"
+                          onClick={() => openCardEditor(card.id)}
+                          className="min-w-0 flex-1 truncate text-left text-sm text-ink-secondary transition-colors hover:text-ink"
                         >
                           {card.front}
-                        </Link>
+                        </button>
                         <Pill tone="success">
                           {card.lapses}× lapsed → {Math.round(card.stability)}d strong
                         </Pill>
@@ -731,6 +750,30 @@ function ProgressContent() {
           )}
         </>
       )}
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} title="Edit card">
+        {editing ? (
+          <CardEditor
+            card={editing}
+            busy={updateCard.isPending}
+            submitLabel="Save"
+            busyLabel="Saving…"
+            onCancel={() => setEditing(null)}
+            onSubmit={(input) =>
+              updateCard.mutate(
+                { cardId: editing.id, patch: input },
+                {
+                  onSuccess: () => {
+                    setEditing(null);
+                    // The trouble/conquered lists render this card's front.
+                    queryClient.invalidateQueries({ queryKey: ["stats"] });
+                  },
+                },
+              )
+            }
+          />
+        ) : null}
+      </Dialog>
     </div>
   );
 }
