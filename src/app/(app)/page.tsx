@@ -41,9 +41,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-[-0.025em]">Decks</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Review what&apos;s due, then add what you&apos;re learning next.
-          </p>
+          <p className="mt-1 text-sm text-ink-muted">Review what&apos;s due, then add what&apos;s next.</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon className="h-4 w-4" /> New deck
@@ -51,26 +49,47 @@ export default function DashboardPage() {
       </div>
 
       {overview ? (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-hairline bg-surface px-4 py-3 shadow-card">
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <span aria-hidden="true" className="text-xl">
-              🔥
-            </span>
-            {overview.streakDays > 0 ? (
-              <>
-                <span className="font-mono text-xl font-bold tracking-[-0.02em]">{overview.streakDays}</span>
-                <span className="text-ink-secondary">day{overview.streakDays === 1 ? "" : "s"}</span>
-              </>
-            ) : (
-              "Start a streak today"
-            )}
-            {overview.bestStreak > overview.streakDays ? (
-              <span className="font-normal text-ink-faint">· best {overview.bestStreak}</span>
-            ) : null}
-          </span>
-          <div className="flex min-w-40 flex-1 items-center gap-2">
+        <div className="grid items-center gap-x-10 gap-y-4 rounded-card border border-hairline bg-surface px-5 py-4 shadow-card sm:grid-cols-[auto_1fr]">
+          {/* Each number gets a labeled home — no more four-styles-on-one-line. */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Streak</p>
+            <p className="mt-1 flex items-baseline gap-2">
+              <span className="relative inline-flex" aria-hidden="true">
+                🔥
+                {overview.dueToday === 0 && overview.reviewsToday > 0 ? (
+                  <span className="live-dot absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-success" />
+                ) : null}
+              </span>
+              {overview.streakDays > 0 ? (
+                <>
+                  <span className="font-mono text-2xl font-bold tracking-[-0.02em]">
+                    {overview.streakDays}
+                  </span>
+                  <span className="text-sm text-ink-secondary">
+                    day{overview.streakDays === 1 ? "" : "s"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm font-semibold text-ink-secondary">Start today</span>
+              )}
+              {overview.bestStreak > overview.streakDays ? (
+                <span className="text-xs text-ink-faint">best {overview.bestStreak}</span>
+              ) : null}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Today</p>
+              <span className="truncate font-mono text-xs text-ink-muted">
+                {overview.dueToday === 0
+                  ? overview.reviewsToday > 0
+                    ? "day secured 🔥"
+                    : "all clear"
+                  : `${overview.reviewsToday} done · ${overview.dueToday} left`}
+              </span>
+            </div>
             {/* Today's goal is clearing the due queue — retrieval, not time. */}
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-subtle">
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-subtle">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -83,13 +102,6 @@ export default function DashboardPage() {
                 }}
               />
             </div>
-            <span className="whitespace-nowrap font-mono text-xs text-ink-muted">
-              {overview.dueToday === 0
-                ? overview.reviewsToday > 0
-                  ? "day secured 🔥"
-                  : "all clear"
-                : `${overview.reviewsToday} done · ${overview.dueToday} left`}
-            </span>
           </div>
         </div>
       ) : null}
@@ -114,7 +126,9 @@ export default function DashboardPage() {
             return (
               <Link key={deck.id} href={`/decks/${deck.id}`} className="group">
                 <Card lift className="h-full">
-                  <CardContent>
+                  {/* Footer anchors to the card bottom so every card in the
+                      grid keeps the same baseline, whatever its content. */}
+                  <CardContent className="flex h-full flex-col">
                     <div className="flex items-start gap-3">
                       <DeckBadge id={deck.id} name={deck.name} />
                       <div className="min-w-0 flex-1">
@@ -124,7 +138,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-1.5 pt-4">
                       <div className="flex flex-wrap gap-1.5">
                         {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
                         {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
@@ -136,7 +150,7 @@ export default function DashboardPage() {
                         // Straight into the session without opening the deck —
                         // browsing card fronts first is pre-exposure before retrieval.
                         <Button
-                          className="!px-2.5 !py-1 text-xs"
+                          className="!px-3 !py-1.5 text-xs"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();

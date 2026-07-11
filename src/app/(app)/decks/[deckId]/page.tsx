@@ -107,7 +107,6 @@ export default function DeckPage() {
   const { data: decks } = useDecks();
   const { data: stats } = useDeckStats(deckId);
   const counts = decks?.find((d) => d.id === deckId)?.counts;
-  const reviews30d = stats?.reviewsLast30d.reduce((sum, day) => sum + day.count, 0) ?? 0;
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -160,36 +159,68 @@ export default function DeckPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            {deck ? (
-              <span
-                aria-hidden
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-badge text-base font-bold text-white shadow-soft"
-                style={{ background: deckGradient(deck.id) }}
-              >
-                {(deck.name.trim()[0] ?? "?").toUpperCase()}
-              </span>
-            ) : null}
-            <h1 className="truncate text-2xl font-bold tracking-[-0.025em]">
-              {deck?.name ?? <Skeleton className="h-7 w-48" />}
-            </h1>
+      {/* Hero: deck identity, one stat line, and the STUDY actions. Authoring
+          (Add/Generate) lives with the card list below — grouped by intent. */}
+      <Card>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              {deck ? (
+                <span
+                  aria-hidden
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-badge text-lg font-bold text-white shadow-soft"
+                  style={{ background: deckGradient(deck.id) }}
+                >
+                  {(deck.name.trim()[0] ?? "?").toUpperCase()}
+                </span>
+              ) : null}
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-bold tracking-[-0.025em]">
+                  {deck?.name ?? <Skeleton className="h-7 w-48" />}
+                </h1>
+                {deck?.description ? (
+                  <p className="mt-0.5 truncate text-sm text-ink-muted">{deck.description}</p>
+                ) : null}
+              </div>
+            </div>
+            <OverflowMenu
+              label="Deck actions"
+              items={[
+                {
+                  label: "Edit deck",
+                  icon: <PencilSquareIcon className="h-4 w-4" />,
+                  onSelect: () => setEditDeckOpen(true),
+                },
+                {
+                  label: "Delete deck",
+                  icon: <TrashIcon className="h-4 w-4" />,
+                  danger: true,
+                  onSelect: () => setDeleteDeckOpen(true),
+                },
+              ]}
+            />
           </div>
-          {deck?.description ? <p className="mt-1 text-sm text-ink-muted">{deck.description}</p> : null}
+
           {counts ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {counts.due + counts.learning > 0 ? (
-                <Pill tone="brand">{counts.due + counts.learning} due</Pill>
-              ) : null}
-              {counts.new > 0 ? <Pill tone="success">{counts.new} new</Pill> : null}
-              <Pill tone="neutral">{counts.total} total</Pill>
-              {stats?.retention30d !== null && stats?.retention30d !== undefined ? (
-                <Pill tone={stats.retention30d >= 0.85 ? "success" : "warning"}>
-                  {Math.round(stats.retention30d * 100)}% retention
-                </Pill>
-              ) : null}
-              {reviews30d > 0 ? <Pill tone="neutral">{reviews30d} reviews / 30d</Pill> : null}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-ink-muted">
+              <span>
+                {[
+                  `${counts.total} card${counts.total === 1 ? "" : "s"}`,
+                  counts.due + counts.learning > 0 ? `${counts.due + counts.learning} due` : null,
+                  counts.new > 0 ? `${counts.new} new` : null,
+                  stats?.retention30d !== null && stats?.retention30d !== undefined
+                    ? `${Math.round(stats.retention30d * 100)}% retention (30d)`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              <Link
+                href={`/progress?deck=${deckId}`}
+                className="font-semibold text-brand-dark transition-colors hover:text-brand dark:text-brand-light"
+              >
+                View stats →
+              </Link>
               {stats?.calibration?.overconfidentRate != null && stats.calibration.overconfidentRate > 0.15 ? (
                 <Pill tone="danger">
                   overconfident on {Math.round(stats.calibration.overconfidentRate * 100)}% of &ldquo;sure&rdquo;
@@ -198,64 +229,28 @@ export default function DeckPage() {
               ) : null}
             </div>
           ) : null}
-          {stats?.calibration ? (
-            <p className="mt-2 text-xs text-ink-muted">
-              Calibration (30d):{" "}
-              {[
-                [3, "Sure"] as const,
-                [2, "Think so"] as const,
-                [1, "No idea"] as const,
-              ]
-                .filter(([level]) => stats.calibration?.levels[level])
-                .map(([level, label]) => {
-                  const item = stats.calibration!.levels[level];
-                  return `${label} — ${Math.round(item.recallRate * 100)}% recalled over ${item.attempts}`;
-                })
-                .join(" · ")}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => setAddOpen(true)}>
-            <PlusIcon className="h-4 w-4" /> Add cards
-          </Button>
-          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
-            <SparklesIcon className="h-4 w-4" /> Generate
-          </Button>
-          <Link href={`/decks/${deckId}/review`}>
-            <Button disabled={!dueNow}>
-              <PlayIcon className="h-4 w-4" /> Review {dueNow ? `(${dueNow})` : ""}
-            </Button>
-          </Link>
-          <Button variant="secondary" onClick={() => setPracticeOpen(true)}>
-            <BoltIcon className="h-4 w-4" /> Practice
-          </Button>
-          <Link href={`/decks/${deckId}/feynman`}>
-            <Button variant="secondary">
-              <AcademicCapIcon className="h-4 w-4" /> Feynman
-            </Button>
-          </Link>
-          <OverflowMenu
-            label="Deck actions"
-            items={[
-              {
-                label: "Edit deck",
-                icon: <PencilSquareIcon className="h-4 w-4" />,
-                onSelect: () => setEditDeckOpen(true),
-              },
-              {
-                label: "Delete deck",
-                icon: <TrashIcon className="h-4 w-4" />,
-                danger: true,
-                onSelect: () => setDeleteDeckOpen(true),
-              },
-            ]}
-          />
-        </div>
-      </div>
 
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/decks/${deckId}/review`} className="w-full sm:w-auto">
+              <Button disabled={!dueNow} className="w-full sm:w-auto">
+                <PlayIcon className="h-4 w-4" /> Review {dueNow ? `(${dueNow})` : ""}
+              </Button>
+            </Link>
+            <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setPracticeOpen(true)}>
+              <BoltIcon className="h-4 w-4" /> Practice
+            </Button>
+            <Link href={`/decks/${deckId}/feynman`} className="flex-1 sm:flex-none">
+              <Button variant="secondary" className="w-full">
+                <AcademicCapIcon className="h-4 w-4" /> Feynman
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card browser toolbar: find on the left, author on the right. */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
+        <div className="relative min-w-48 max-w-sm flex-1">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
           <Input
             value={search}
@@ -282,6 +277,14 @@ export default function DeckPage() {
               {label}
             </button>
           ))}
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button variant="secondary" onClick={() => setAddOpen(true)}>
+            <PlusIcon className="h-4 w-4" /> Add
+          </Button>
+          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
+            <SparklesIcon className="h-4 w-4" /> Generate
+          </Button>
         </div>
       </div>
 
