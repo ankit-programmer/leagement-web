@@ -345,6 +345,21 @@ button:not(:disabled),
         animation: fade-out-down 0.15s ease-in both;
     }
 
+    /* The completion ring draws closed around the session count — anticipation
+       before the confetti payoff. Reduced motion renders it already closed
+       (the class is inert outside this block and dashoffset defaults to 0). */
+    @keyframes ring-close {
+        from {
+            stroke-dashoffset: var(--ring-c);
+        }
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+    .animate-ring-close {
+        animation: ring-close 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+    }
+
     /* One-shot celebration confetti; each piece gets inline --dx/--rot/delay. */
     @keyframes confetti-fall {
         0% {

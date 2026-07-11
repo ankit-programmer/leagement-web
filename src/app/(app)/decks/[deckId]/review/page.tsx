@@ -72,17 +72,76 @@ function CountdownRing({ dueAt }: { dueAt: string }) {
   );
 }
 
-function SummaryTile({ value, label, delay }: { value: string; label: string; delay: number }) {
+function SummaryTile({
+  value,
+  label,
+  delay,
+  tone = "",
+}: {
+  value: string;
+  label: string;
+  delay: number;
+  tone?: string;
+}) {
   return (
     <div
       className="animate-pop-in rounded-badge border border-hairline bg-surface-subtle px-3 py-3"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <p className="font-mono text-xl font-bold tracking-[-0.02em]">{value}</p>
+      <p className={`font-mono text-xl font-bold tracking-[-0.02em] ${tone}`}>{value}</p>
       <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-muted">{label}</p>
     </div>
   );
 }
+
+/** The count-up number inside a ring that draws closed — anticipation, then payoff. */
+function CompletionRing({ value, label, rough }: { value: number; label: string; rough: boolean }) {
+  const radius = 58;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <div className="relative h-32 w-32" style={{ "--ring-c": `${circumference}` } as React.CSSProperties}>
+      <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-90">
+        <circle cx="64" cy="64" r={radius} fill="none" stroke="var(--surface-subtle)" strokeWidth="6" />
+        <circle
+          cx="64"
+          cy="64"
+          r={radius}
+          fill="none"
+          // A rough session closes an amber ring, not a triumphant blue one.
+          stroke={rough ? "var(--warning)" : "var(--brand)"}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          className="animate-ring-close"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-mono text-4xl font-bold tracking-[-0.03em]">{value}</span>
+        <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-muted">{label}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Honest, tier-matched copy — deterministic pick so it varies day to day
+ *  without Math.random, and never fake-praises a rough session. */
+const PRAISE = {
+  sharp: [
+    "Sharp today.",
+    "Locked in — nearly perfect recall.",
+    "Your future self says thanks.",
+  ],
+  steady: [
+    "Solid work — the schedule is doing its job.",
+    "Consistency beats intensity. This counts.",
+    "Steady — exactly how memories get durable.",
+  ],
+  rough: [
+    "Tough ones today — they'll come back easier for it.",
+    "Rough set. Failing a recall is the system finding what needs work.",
+    "Hard session — the struggle is where the strengthening happens.",
+  ],
+};
 
 /** The payoff moment: confetti, a big counted-up number, and visual stats. */
 function SessionSummary({
@@ -111,6 +170,38 @@ function SessionSummary({
   const streak = overview?.streakDays ?? 0;
   const personalBest = streak > 1 && streak === overview?.bestStreak;
 
+  // Tiering: rough sessions get a subdued screen (no confetti, amber ring,
+  // sober copy); small touch-ups skip the fireworks so big moments stay big.
+  const rough = reviewed >= 5 && recalledPct < 60;
+  const confettiCount = rough || reviewed < 5 ? 0 : 24;
+  const pool = recalledPct >= 90 ? PRAISE.sharp : rough ? PRAISE.rough : PRAISE.steady;
+  const praise = pool[(reviewed + streak) % pool.length];
+
+  // Second beat: once the refreshed overview confirms the whole day is clear,
+  // the day-secured banner + big wave land ~1.75s after the first payoff.
+  const daySecured = reviewed > 0 && overview !== undefined && overview.dueToday === 0 && overview.reviewsToday > 0;
+  const [beatReady, setBeatReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(true);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setReducedMotion(reduce);
+    const timer = window.setTimeout(() => setBeatReady(true), reduce ? 0 : 1750);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const showDayBanner = daySecured && beatReady;
+
+  // Haptics mirror the visuals: a soft tap as the ring closes, a firmer one
+  // for the day-secured beat — never for rough sessions or reduced motion.
+  useEffect(() => {
+    if (reducedMotion || rough || confettiCount === 0 || !navigator.vibrate) return;
+    const timer = window.setTimeout(() => navigator.vibrate([30, 40, 30]), 900);
+    return () => window.clearTimeout(timer);
+  }, [reducedMotion, rough, confettiCount]);
+  useEffect(() => {
+    if (!showDayBanner || reducedMotion || !navigator.vibrate) return;
+    navigator.vibrate([40, 60, 40]);
+  }, [showDayBanner, reducedMotion]);
+
   if (reviewed === 0) {
     return (
       <Card className="w-full animate-fade-up">
@@ -128,26 +219,36 @@ function SessionSummary({
 
   return (
     <Card className="relative w-full animate-fade-up overflow-hidden">
-      <Confetti />
+      {confettiCount > 0 ? <Confetti count={confettiCount} delayMs={700} /> : null}
+      {showDayBanner && !reducedMotion ? <Confetti count={36} /> : null}
       <CardContent className="flex flex-col items-center gap-5 py-10 text-center">
-        <div>
-          <p className="font-mono text-5xl font-bold tracking-[-0.03em]">{bigNumber}</p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
-            review{reviewed === 1 ? "" : "s"} · session complete
+        <CompletionRing value={bigNumber} label={`review${reviewed === 1 ? "" : "s"}`} rough={rough} />
+        <div className="-mt-2 space-y-1.5">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Session complete</p>
+          <p
+            className="animate-pop-in text-sm text-ink-secondary"
+            style={{ animationDelay: "850ms" }}
+          >
+            {praise}
           </p>
         </div>
 
         <div className="grid w-full max-w-sm grid-cols-3 gap-2">
-          <SummaryTile value={`${recalledPct}%`} label="recalled" delay={150} />
-          <SummaryTile value={`~${minutes}m`} label="time" delay={250} />
-          <SummaryTile value={streak > 0 ? `🔥${streak}` : "—"} label="streak" delay={350} />
+          <SummaryTile
+            value={`${recalledPct}%`}
+            label="recalled"
+            delay={950}
+            tone={recalledPct >= 90 ? "text-success-ink" : rough ? "text-warning-ink" : ""}
+          />
+          <SummaryTile value={`~${minutes}m`} label="time" delay={1050} />
+          <SummaryTile value={streak > 0 ? `🔥${streak}` : "—"} label="streak" delay={1150} />
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2">
           {personalBest ? (
             <span
               className="animate-pop-in rounded-full bg-success-bg px-3 py-1 text-xs font-semibold text-success-ink"
-              style={{ animationDelay: "450ms" }}
+              style={{ animationDelay: "1250ms" }}
             >
               🔥 Personal-best streak
             </span>
@@ -155,12 +256,24 @@ function SessionSummary({
           {milestone ? (
             <span
               className="animate-pop-in rounded-full bg-brand-tint px-3 py-1 text-xs font-semibold text-brand-dark dark:text-brand-light"
-              style={{ animationDelay: "500ms" }}
+              style={{ animationDelay: "1320ms" }}
             >
               🏅 {milestone.toLocaleString()} reviews all-time
             </span>
           ) : null}
         </div>
+
+        {showDayBanner ? (
+          <div className="animate-pop-in inline-flex items-center gap-2.5 rounded-full border border-hairline bg-surface-subtle px-4 py-2 shadow-raised">
+            <span className="relative text-lg leading-none" aria-hidden>
+              🔥
+              <span className="live-dot absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-success" />
+            </span>
+            <span className="bg-gradient-to-r from-[#0090f6] to-[#7c3aed] bg-clip-text text-base font-extrabold tracking-[-0.01em] text-transparent">
+              Day {streak > 0 ? streak : ""} secured
+            </span>
+          </div>
+        ) : null}
 
         {sureTotal > 0 ? (
           <p className="text-sm text-ink-muted">
