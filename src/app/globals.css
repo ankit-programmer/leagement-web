@@ -119,6 +119,13 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Tailwind v4's preflight leaves buttons on the platform's arrow cursor;
+   the convention users expect on the web is a pointer on anything clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+}
+
 /* Subtle mount motion — chrome stays quiet, and motion is opt-out by OS setting. */
 @media (prefers-reduced-motion: no-preference) {
     @keyframes fade-up {
