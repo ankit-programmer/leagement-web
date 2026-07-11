@@ -22,9 +22,24 @@ import {
 function QueueRow({ row }: { row: GeneratedCard }) {
   const decide = useDecideGenerated();
   const [editOpen, setEditOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  // Triage should feel like clearing, not blinking: the row folds away for
+  // ~180ms, then the (optimistic) mutation removes it from the list.
+  const startDecide = (action: "approve" | "reject") => {
+    if (leaving) return;
+    setLeaving(true);
+    window.setTimeout(() => decide.mutate({ id: row.id, action }), 180);
+  };
 
   return (
-    <Card>
+    <div
+      className={`grid transition-[grid-template-rows,opacity,transform] duration-200 ease-out ${
+        leaving ? "grid-rows-[0fr] -translate-x-1 opacity-0" : "grid-rows-[1fr]"
+      }`}
+    >
+      <div className="min-h-0 overflow-hidden">
+        <Card>
       <CardContent className="space-y-3">
         <Markdown>{row.front}</Markdown>
         <div className="border-l-2 border-hairline pl-3 text-ink-muted">
@@ -38,18 +53,10 @@ function QueueRow({ row }: { row: GeneratedCard }) {
           >
             <PencilSquareIcon className="h-4 w-4" />
           </Button>
-          <Button
-            variant="danger"
-            onClick={() => decide.mutate({ id: row.id, action: "reject" })}
-            aria-label="Reject"
-          >
+          <Button variant="danger" onClick={() => startDecide("reject")} aria-label="Reject">
             <XMarkIcon className="h-4 w-4" /> Reject
           </Button>
-          <Button
-            busy={decide.isPending}
-            busyLabel="Approving…"
-            onClick={() => decide.mutate({ id: row.id, action: "approve" })}
-          >
+          <Button busy={decide.isPending} busyLabel="Approving…" onClick={() => startDecide("approve")}>
             <CheckIcon className="h-4 w-4" /> Approve
           </Button>
         </div>
@@ -77,7 +84,9 @@ function QueueRow({ row }: { row: GeneratedCard }) {
           }
         />
       </Dialog>
-    </Card>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -119,7 +128,7 @@ function QueueContent() {
     }`;
 
   return (
-    <div className="animate-fade-up space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <IconBadge>
@@ -171,6 +180,7 @@ function QueueContent() {
         <QueryError message={error?.message} onRetry={() => refetch()} />
       ) : visible.length === 0 ? (
         <EmptyState
+          icon={<SparklesIcon />}
           title={
             selectedDeck && (pending?.length ?? 0) > 0 ? "Nothing pending for this deck" : "Queue is clear"
           }

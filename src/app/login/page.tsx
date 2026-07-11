@@ -49,13 +49,18 @@ export default function LoginPage() {
   }, [initGoogle]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      {/* Atmosphere: quiet blue + violet fields behind the card (rtlayer hero). */}
+      <div aria-hidden className="hero-blob-brand absolute -top-32 left-[10%] -z-10 h-96 w-96 rounded-full" />
+      <div aria-hidden className="hero-blob-violet absolute -bottom-24 right-[8%] -z-10 h-80 w-80 rounded-full" />
       {GOOGLE_CLIENT_ID ? <Script src="https://accounts.google.com/gsi/client" onLoad={initGoogle} /> : null}
       <Card className="w-full max-w-sm animate-fade-up">
         <CardContent className="flex flex-col items-center gap-5 py-9">
           <Logo className="h-12 w-12" />
           <div className="text-center">
-            <h1 className="text-xl font-bold tracking-[-0.025em]">Leagement</h1>
+            <h1 className="bg-gradient-to-r from-[#0090f6] to-[#7c3aed] bg-clip-text text-2xl font-bold tracking-[-0.025em] text-transparent">
+              Leagement
+            </h1>
             <p className="mt-1 text-sm text-ink-muted">
               Learning that sticks — retrieval practice on an FSRS schedule.
             </p>

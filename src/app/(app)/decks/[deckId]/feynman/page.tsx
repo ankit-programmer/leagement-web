@@ -34,7 +34,7 @@ function CritiquePanel({ session }: { session: FeynmanSession }) {
   const { critique, rating } = session;
   if (!critique || !rating) return null;
   return (
-    <Card className="animate-fade-up">
+    <Card className={`animate-fade-up ${rating === "strong" ? "border-success/40" : ""}`}>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-bold tracking-[-0.01em]">{session.topic}</h2>
@@ -82,10 +82,24 @@ function CritiquePanel({ session }: { session: FeynmanSession }) {
   );
 }
 
+/** The curious student's face — a small gradient badge, same identity everywhere. */
+function TutorAvatar() {
+  return (
+    <span
+      aria-hidden
+      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-soft"
+      style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}
+    >
+      S
+    </span>
+  );
+}
+
 function ChatBubble({ message }: { message: FeynmanMessage }) {
   const isUser = message.role === "user";
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex items-start gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
+      {isUser ? null : <TutorAvatar />}
       <div
         className={`max-w-[85%] rounded-card px-3.5 py-1.5 text-sm ${
           isUser ? "bg-brand-tint" : "border border-hairline bg-surface-subtle"
@@ -176,9 +190,14 @@ function ChatSession({
           <Transcript messages={messages} />
           {/* While the model composes its next question, the student is "typing". */}
           {send.isPending ? (
-            <div className="flex justify-start">
-              <div className="rounded-card border border-hairline bg-surface-subtle px-3.5 py-2.5 text-sm text-ink-faint">
-                <span className="animate-pulse">thinking…</span>
+            <div className="flex items-start justify-start gap-2">
+              <TutorAvatar />
+              <div className="rounded-card border border-hairline bg-surface-subtle px-3.5 py-3">
+                <span className="typing-dots flex items-center gap-1" aria-label="Thinking…">
+                  <span />
+                  <span />
+                  <span />
+                </span>
               </div>
             </div>
           ) : null}
@@ -285,7 +304,7 @@ export default function FeynmanPage() {
   const resumable = sessions.data?.find((s) => s.status === "active" && s.id !== activeId);
 
   return (
-    <div className="mx-auto max-w-2xl animate-fade-up space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/decks/${deckId}`}

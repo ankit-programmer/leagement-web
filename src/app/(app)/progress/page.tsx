@@ -34,9 +34,9 @@ const STATE_SERIES = [
   { key: "relearning", label: "Relearning", color: "#dc2626" },
 ] as const;
 
-function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatTile({ label, value, hint, delay = 0 }: { label: string; value: string; hint?: string; delay?: number }) {
   return (
-    <Card>
+    <Card className="animate-pop-in" style={{ animationDelay: `${delay}ms` }}>
       <CardContent className="py-4">
         <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">{label}</p>
         <p className="mt-1 font-mono text-2xl font-bold tracking-[-0.02em]">{value}</p>
@@ -63,14 +63,18 @@ function ReviewsPerDayChart({ data, days }: { data: AnalyticsStats["reviewsPerDa
   return (
     <div>
       <div className="flex h-36 items-end gap-[2px]" role="img" aria-label={`Reviews per day, last ${days} days`}>
-        {series.map((day) => (
+        {series.map((day, index) => (
           <div key={day.date} className="group relative flex h-full flex-1 items-end">
             <div
-              className="w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
-              style={{ height: `${Math.round((day.count / max) * 100)}%`, minHeight: day.count > 0 ? 3 : 0 }}
+              className="animate-bar-rise w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
+              style={{
+                height: `${Math.round((day.count / max) * 100)}%`,
+                minHeight: day.count > 0 ? 3 : 0,
+                animationDelay: `${Math.min(index * 6, 350)}ms`,
+              }}
             />
             {/* hover layer — hit target is the full column */}
-            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
+            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 font-mono text-[10px] text-page shadow-raised group-hover:block">
               {day.count} · {day.date.slice(5)}
             </div>
           </div>
@@ -100,10 +104,14 @@ function WeekAheadChart({ data }: { data: AnalyticsStats["upcomingWeek"] }) {
         {data.map((day, index) => (
           <div key={day.date} className="group relative flex h-full flex-1 flex-col justify-end">
             <div
-              className="w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
-              style={{ height: `${Math.round((day.count / max) * 100)}%`, minHeight: day.count > 0 ? 3 : 0 }}
+              className="animate-bar-rise w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
+              style={{
+                height: `${Math.round((day.count / max) * 100)}%`,
+                minHeight: day.count > 0 ? 3 : 0,
+                animationDelay: `${index * 40}ms`,
+              }}
             />
-            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
+            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 font-mono text-[10px] text-page shadow-raised group-hover:block">
               {day.count} cards
             </div>
           </div>
@@ -194,6 +202,13 @@ function RetentionTrendChart({
       </p>
       <div className="relative mt-2 h-36" role="img" aria-label="Rolling 7-day retention over the last 90 days">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <defs>
+            {/* rtlayer chart signature: area under the line fades to nothing. */}
+            <linearGradient id="retention-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
           {ticks.map((tick) => (
             <line
               key={tick}
@@ -218,6 +233,15 @@ function RetentionTrendChart({
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
+          {segments.map((segment) =>
+            segment.length > 1 ? (
+              <polygon
+                key={`a-${segment[0].x}`}
+                points={`${segment.map((p) => `${p.x},${p.y}`).join(" ")} ${segment[segment.length - 1]!.x},100 ${segment[0].x},100`}
+                fill="url(#retention-fill)"
+              />
+            ) : null,
+          )}
           {segments.map((segment) =>
             segment.length === 1 ? (
               <circle
@@ -263,7 +287,7 @@ function RetentionTrendChart({
         <div className="absolute inset-0 flex">
           {points.map((point) => (
             <div key={point.date} className="group relative h-full flex-1">
-              <div className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
+              <div className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 font-mono text-[10px] text-page shadow-raised group-hover:block">
                 {point.retention !== null
                   ? `${Math.round(point.retention * 100)}% · ${point.attempts} reviews · ${point.date.slice(5)}`
                   : `${point.attempts} review${point.attempts === 1 ? "" : "s"} in window · ${point.date.slice(5)}`}
@@ -355,7 +379,7 @@ function ProgressContent() {
   const hasData = analytics.totals.reviews > 0 || analytics.totals.cards > 0;
 
   return (
-    <div className={`animate-fade-up space-y-6 transition-opacity duration-200 ${isFetching ? "opacity-50" : ""}`}>
+    <div className={`space-y-6 transition-opacity duration-200 ${isFetching ? "opacity-50" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <IconBadge>
@@ -423,6 +447,7 @@ function ProgressContent() {
 
       {!hasData ? (
         <EmptyState
+          icon={<ChartBarIcon />}
           title="No data yet"
           hint={
             selectedDeck
@@ -437,6 +462,7 @@ function ProgressContent() {
             <StatTile
               label="Streak"
               value={`${overview?.streakDays ?? 0}d`}
+              delay={60}
               hint={
                 overview && overview.bestStreak > 0
                   ? `best ${overview.bestStreak}d${selectedDeck ? " · all decks" : ""}`
@@ -445,13 +471,18 @@ function ProgressContent() {
                     : undefined
               }
             />
-            <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} />
+            <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} delay={120} />
             {selectedDeck ? (
-              <StatTile label="Feynman sessions" value={analytics.totals.feynmanSessions.toLocaleString()} />
+              <StatTile
+                label="Feynman sessions"
+                value={analytics.totals.feynmanSessions.toLocaleString()}
+                delay={180}
+              />
             ) : (
               <StatTile
                 label="Decks"
                 value={analytics.totals.decks.toLocaleString()}
+                delay={180}
                 hint={
                   analytics.totals.feynmanSessions > 0
                     ? `${analytics.totals.feynmanSessions} Feynman sessions`

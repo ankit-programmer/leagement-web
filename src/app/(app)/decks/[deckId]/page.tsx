@@ -22,14 +22,17 @@ import { GenerateDialog } from "@/components/generation/GenerateDialog";
 import { PracticeDialog } from "@/components/review/PracticeDialog";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
+import { deckGradient } from "@/lib/deck-accent";
 import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from "@/lib/queries/cards";
 import { useDeck, useDecks, useDeleteDeck, useUpdateDeck } from "@/lib/queries/decks";
 import { useDeckStats } from "@/lib/queries/stats";
@@ -122,6 +125,7 @@ export default function DeckPage() {
   const [editing, setEditing] = useState<CardType | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
   const [deleteDeckOpen, setDeleteDeckOpen] = useState(false);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
   // Debounce properly: one timer, cleared on every change — the previous
   // inline setTimeout leaked a timer (and a full-list re-render) per keystroke.
@@ -132,14 +136,7 @@ export default function DeckPage() {
 
   // Stable identities so memoized rows never re-render from parent state.
   const handleEdit = useCallback((card: CardType) => setEditing(card), []);
-  const handleDelete = useCallback(
-    (cardId: string) => {
-      if (window.confirm("Delete this card? Its review history is kept.")) {
-        deleteCard.mutate(cardId);
-      }
-    },
-    [deleteCard.mutate],
-  );
+  const handleDelete = useCallback((cardId: string) => setDeletingCardId(cardId), []);
   const handleToggleSuspend = useCallback(
     (card: CardType) => updateCard.mutate({ cardId: card.id, patch: { suspended: !card.suspended } }),
     [updateCard.mutate],
@@ -162,12 +159,23 @@ export default function DeckPage() {
   const dueNow = counts ? counts.due + counts.learning + counts.newAvailable : 0;
 
   return (
-    <div className="animate-fade-up space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold tracking-[-0.025em]">
-            {deck?.name ?? <Skeleton className="h-7 w-48" />}
-          </h1>
+          <div className="flex items-center gap-3">
+            {deck ? (
+              <span
+                aria-hidden
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-badge text-base font-bold text-white shadow-soft"
+                style={{ background: deckGradient(deck.id) }}
+              >
+                {(deck.name.trim()[0] ?? "?").toUpperCase()}
+              </span>
+            ) : null}
+            <h1 className="truncate text-2xl font-bold tracking-[-0.025em]">
+              {deck?.name ?? <Skeleton className="h-7 w-48" />}
+            </h1>
+          </div>
           {deck?.description ? <p className="mt-1 text-sm text-ink-muted">{deck.description}</p> : null}
           {counts ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -207,32 +215,42 @@ export default function DeckPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => setEditDeckOpen(true)} aria-label="Edit deck">
-            <PencilSquareIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="danger" aria-label="Delete deck" onClick={() => setDeleteDeckOpen(true)}>
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-          <Link href={`/decks/${deckId}/feynman`}>
-            <Button variant="secondary">
-              <AcademicCapIcon className="h-4 w-4" /> Feynman
-            </Button>
-          </Link>
-          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
-            <SparklesIcon className="h-4 w-4" /> Generate with AI
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setAddOpen(true)}>
             <PlusIcon className="h-4 w-4" /> Add cards
           </Button>
-          <Button variant="secondary" onClick={() => setPracticeOpen(true)}>
-            <BoltIcon className="h-4 w-4" /> Practice
+          <Button variant="secondary" onClick={() => setGenerateOpen(true)}>
+            <SparklesIcon className="h-4 w-4" /> Generate
           </Button>
           <Link href={`/decks/${deckId}/review`}>
             <Button disabled={!dueNow}>
               <PlayIcon className="h-4 w-4" /> Review {dueNow ? `(${dueNow})` : ""}
             </Button>
           </Link>
+          <Button variant="secondary" onClick={() => setPracticeOpen(true)}>
+            <BoltIcon className="h-4 w-4" /> Practice
+          </Button>
+          <Link href={`/decks/${deckId}/feynman`}>
+            <Button variant="secondary">
+              <AcademicCapIcon className="h-4 w-4" /> Feynman
+            </Button>
+          </Link>
+          <OverflowMenu
+            label="Deck actions"
+            items={[
+              {
+                label: "Edit deck",
+                icon: <PencilSquareIcon className="h-4 w-4" />,
+                onSelect: () => setEditDeckOpen(true),
+              },
+              {
+                label: "Delete deck",
+                icon: <TrashIcon className="h-4 w-4" />,
+                danger: true,
+                onSelect: () => setDeleteDeckOpen(true),
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -334,6 +352,22 @@ export default function DeckPage() {
           onConfirm={() => deleteDeck.mutate(deckId, { onSuccess: () => router.push("/") })}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={deletingCardId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingCardId(null);
+        }}
+        title="Delete this card?"
+        description="Its review history is kept for your analytics."
+        confirmLabel="Delete card"
+        busy={deleteCard.isPending}
+        onConfirm={() => {
+          if (deletingCardId) {
+            deleteCard.mutate(deletingCardId, { onSuccess: () => setDeletingCardId(null) });
+          }
+        }}
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen} title="Add a card">
         <CardEditor

@@ -1,6 +1,6 @@
 "use client";
 
-import { PlayIcon, PlusIcon, RectangleStackIcon } from "@heroicons/react/24/outline";
+import { PlayIcon, PlusIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -8,12 +8,52 @@ import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { IconBadge } from "@/components/ui/IconBadge";
 import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { deckGradient } from "@/lib/deck-accent";
 import { useCreateDeck, useDecks } from "@/lib/queries/decks";
 import { useOverviewStats } from "@/lib/queries/stats";
+import type { DeckCounts } from "@/lib/types";
+
+/** Every deck wears its own gradient and initial — identity at a glance. */
+function DeckBadge({ id, name }: { id: string; name: string }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-badge text-base font-bold text-white shadow-soft"
+      style={{ background: deckGradient(id) }}
+    >
+      {(name.trim()[0] ?? "?").toUpperCase()}
+    </span>
+  );
+}
+
+/** Thin new/learning/known strip — the deck's maturity in one glance. */
+function MaturityStrip({ counts }: { counts: DeckCounts }) {
+  const known = Math.max(0, counts.total - counts.new - counts.learning);
+  const segments = [
+    { value: counts.new, color: "#16a34a", label: "new" },
+    { value: counts.learning, color: "#d97706", label: "learning" },
+    { value: known, color: "#0090f6", label: "known" },
+  ].filter((segment) => segment.value > 0);
+  if (counts.total === 0) return null;
+  return (
+    <div
+      className="flex h-1.5 gap-[2px] overflow-hidden rounded-full"
+      role="img"
+      aria-label={segments.map((s) => `${s.value} ${s.label}`).join(", ")}
+    >
+      {segments.map((segment) => (
+        <div
+          key={segment.label}
+          style={{ width: `${(segment.value / counts.total) * 100}%`, backgroundColor: segment.color }}
+          className="rounded-full"
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { data: decks, isLoading, isFetching, isError, error, refetch } = useDecks();
@@ -23,7 +63,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   return (
-    <div className="animate-fade-up space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-[-0.025em]">Decks</h1>
@@ -38,9 +78,18 @@ export default function DashboardPage() {
 
       {overview ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-hairline bg-surface px-4 py-3 shadow-card">
-          <span className="flex items-center gap-1.5 text-sm font-semibold">
-            <span aria-hidden="true">🔥</span>
-            {overview.streakDays > 0 ? `${overview.streakDays}-day streak` : "Start a streak today"}
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <span aria-hidden="true" className="text-xl">
+              🔥
+            </span>
+            {overview.streakDays > 0 ? (
+              <>
+                <span className="font-mono text-xl font-bold tracking-[-0.02em]">{overview.streakDays}</span>
+                <span className="text-ink-secondary">day{overview.streakDays === 1 ? "" : "s"}</span>
+              </>
+            ) : (
+              "Start a streak today"
+            )}
             {overview.bestStreak > overview.streakDays ? (
               <span className="font-normal text-ink-faint">· best {overview.bestStreak}</span>
             ) : null}
@@ -49,8 +98,9 @@ export default function DashboardPage() {
             {/* Today's goal is clearing the due queue — retrieval, not time. */}
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-subtle">
               <div
-                className="h-full rounded-full bg-brand transition-all duration-500"
+                className="h-full rounded-full transition-all duration-500"
                 style={{
+                  backgroundImage: "var(--gradient-brand)",
                   width: `${
                     overview.dueToday + overview.reviewsToday > 0
                       ? Math.round((overview.reviewsToday / (overview.reviewsToday + overview.dueToday)) * 100)
@@ -89,12 +139,10 @@ export default function DashboardPage() {
             const dueNow = deck.counts.due + deck.counts.learning;
             return (
               <Link key={deck.id} href={`/decks/${deck.id}`} className="group">
-                <Card className="h-full transition-shadow group-hover:shadow-raised">
+                <Card lift className="h-full">
                   <CardContent>
                     <div className="flex items-start gap-3">
-                      <IconBadge>
-                        <RectangleStackIcon />
-                      </IconBadge>
+                      <DeckBadge id={deck.id} name={deck.name} />
                       <div className="min-w-0 flex-1">
                         <h2 className="truncate font-bold tracking-[-0.01em]">{deck.name}</h2>
                         <p className="truncate text-sm text-ink-muted">
@@ -102,7 +150,10 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="mt-4">
+                      <MaturityStrip counts={deck.counts} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5">
                       <div className="flex flex-wrap gap-1.5">
                         {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
                         {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
@@ -133,6 +184,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <EmptyState
+          icon={<PlusIcon />}
           title="No decks yet"
           hint="Create your first deck, then add cards by hand or generate them from your notes with AI."
           action={

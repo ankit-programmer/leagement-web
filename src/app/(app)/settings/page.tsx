@@ -1,6 +1,6 @@
 "use client";
 
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import * as Switch from "@radix-ui/react-switch";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +30,13 @@ export default function SettingsPage() {
   // Absent field = the deployed API predates the coach; hide the section.
   const coachSupported = me?.coachEnabled !== undefined;
 
+  // The saved-chip confirms and then gets out of the way (rtlayer's copy-check pattern).
+  useEffect(() => {
+    if (!saved) return;
+    const timer = window.setTimeout(() => setSaved(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
+
   useEffect(() => {
     if (!me) return;
     setTimezone(me.timezone);
@@ -51,7 +58,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl animate-fade-up space-y-6">
+    <div className="mx-auto max-w-xl space-y-6">
       <div className="flex items-center gap-3">
         <IconBadge>
           <Cog6ToothIcon />
@@ -192,7 +199,11 @@ export default function SettingsPage() {
               <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
             ) : null}
             <div className="flex items-center justify-end gap-3">
-              {saved ? <span className="text-sm text-success-ink">Saved</span> : null}
+              {saved ? (
+                <span className="animate-pop-in flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success-ink">
+                  <CheckIcon className="h-3.5 w-3.5" /> Saved
+                </span>
+              ) : null}
               <Button type="submit" busy={updateMe.isPending} busyLabel="Saving…">
                 Save
               </Button>
