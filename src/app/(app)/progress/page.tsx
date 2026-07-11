@@ -140,10 +140,12 @@ function RetentionTrendChart({
   data,
   target,
 }: {
-  data: AnalyticsStats["retentionTrend"];
+  /** Undefined when the API predates this field (deploy skew) — render the empty state, never crash. */
+  data: AnalyticsStats["retentionTrend"] | undefined;
   target?: number;
 }) {
-  const valid = data
+  const points = data ?? [];
+  const valid = points
     .map((point, index) => ({ ...point, index }))
     .filter((point): point is typeof point & { retention: number } => point.retention !== null);
 
@@ -157,13 +159,13 @@ function RetentionTrendChart({
 
   const yMax = 1;
   const yMin = Math.min(0.6, Math.floor(Math.min(...valid.map((p) => p.retention)) * 10) / 10);
-  const x = (index: number) => (index / (data.length - 1)) * 100;
+  const x = (index: number) => (index / (points.length - 1)) * 100;
   const y = (retention: number) => ((yMax - retention) / (yMax - yMin)) * 100;
 
   // Consecutive non-null runs become separate line segments; lone points get a dot.
   const segments: Array<Array<{ x: number; y: number }>> = [];
   let run: Array<{ x: number; y: number }> = [];
-  data.forEach((point, index) => {
+  points.forEach((point, index) => {
     if (point.retention === null) {
       if (run.length > 0) segments.push(run);
       run = [];
@@ -259,7 +261,7 @@ function RetentionTrendChart({
         ) : null}
         {/* hover columns — same chip idiom as the bar charts */}
         <div className="absolute inset-0 flex">
-          {data.map((point) => (
+          {points.map((point) => (
             <div key={point.date} className="group relative h-full flex-1">
               <div className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
                 {point.retention !== null
@@ -271,9 +273,9 @@ function RetentionTrendChart({
         </div>
       </div>
       <div className="mt-1 flex justify-between border-t border-hairline pt-1 font-mono text-[10px] text-ink-faint">
-        <span>{data[0]?.date.slice(5)}</span>
+        <span>{points[0]?.date.slice(5)}</span>
         <span>rolling 7-day · gaps = under 10 reviews</span>
-        <span>{data[data.length - 1]?.date.slice(5)}</span>
+        <span>{points[points.length - 1]?.date.slice(5)}</span>
       </div>
     </div>
   );
