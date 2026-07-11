@@ -34,7 +34,12 @@
     --danger-bg: #fef2f2;
     --danger-ink: #991b1b;
     --skeleton: #edf1f6;
-    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.09), transparent);
+    /* Violet is the quiet second hue (rtlayer uses it the same way): decorative
+       only — gradients, hero blobs, celebration — never for interactive states. */
+    --violet: #7c3aed;
+    --violet-soft: rgba(124, 58, 237, 0.09);
+    --gradient-brand: linear-gradient(135deg, #0090f6, #0057d8);
+    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.09), transparent 65%);
 }
 
 .dark {
@@ -63,7 +68,10 @@
     --danger-bg: rgba(220, 38, 38, 0.14);
     --danger-ink: #fca5a5;
     --skeleton: #1c2942;
-    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.12), transparent);
+    --violet: #a78bfa;
+    --violet-soft: rgba(139, 92, 246, 0.14);
+    --gradient-brand: linear-gradient(135deg, #35a5f5, #1d6fd8);
+    --page-wash: radial-gradient(1100px 480px at 50% -240px, rgba(0, 144, 246, 0.12), transparent 65%);
 }
 
 @theme inline {
@@ -92,6 +100,7 @@
     --color-danger-bg: var(--danger-bg);
     --color-danger-ink: var(--danger-ink);
     --color-skeleton: var(--skeleton);
+    --color-violet: var(--violet);
 
     --radius-chip: 8px;
     --radius-btn: 10px;
@@ -100,14 +109,25 @@
     --radius-card: 16px;
     --radius-dialog: 20px;
 
+    /* rtlayer's elevation signature: every shadow is TWO stacked layers (tight
+       contact + wide diffuse with negative spread so blur pools underneath),
+       always tinted on slate-900 — never neutral black. Hover steps UP a tier. */
     --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.05);
-    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-raised: 0 8px 24px -12px rgba(15, 23, 42, 0.18);
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px -2px rgba(15, 23, 42, 0.06);
+    --shadow-raised: 0 2px 4px -1px rgba(15, 23, 42, 0.06), 0 8px 24px -4px rgba(15, 23, 42, 0.1);
+    --shadow-lifted: 0 4px 8px -2px rgba(15, 23, 42, 0.08), 0 12px 32px -8px rgba(15, 23, 42, 0.12);
     --shadow-overlay: 0 24px 64px -16px rgba(15, 23, 42, 0.25);
     --shadow-brand: 0 1px 2px rgba(0, 114, 196, 0.35);
+    --shadow-brand-hover: 0 2px 8px -1px rgba(0, 114, 196, 0.5);
 
     --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+html {
+    /* clip (not hidden) so decorative glows can overhang without a scrollbar
+       while position: sticky keeps working. */
+    overflow-x: clip;
 }
 
 body {
@@ -119,6 +139,35 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+    background: rgba(0, 144, 246, 0.18);
+}
+
+/* Thin branded scrollbars — chrome recedes, content leads. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--hairline-strong) transparent;
+}
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+    background: var(--hairline-strong);
+    border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-faint);
+}
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Stat numbers must not jitter as they change. */
+.font-mono {
+    font-variant-numeric: tabular-nums;
+}
+
 /* Tailwind v4's preflight leaves buttons on the platform's arrow cursor;
    the convention users expect on the web is a pointer on anything clickable. */
 button:not(:disabled),
@@ -126,12 +175,50 @@ button:not(:disabled),
     cursor: pointer;
 }
 
-/* Subtle mount motion — chrome stays quiet, and motion is opt-out by OS setting. */
+/* Decorative hero blobs (login, celebrations) — pure atmosphere, z-behind. */
+.hero-blob-brand {
+    background: radial-gradient(closest-side, rgba(0, 144, 246, 0.12), transparent);
+}
+.hero-blob-violet {
+    background: radial-gradient(closest-side, var(--violet-soft), transparent);
+}
+
+/* Dot appearance lives outside the motion query so reduced-motion users still
+   see a (static) indicator; only the bounce is motion-gated. */
+.typing-dots span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--brand);
+    opacity: 0.6;
+}
+
+/* Reduced motion: entrances still HAPPEN (a quick fade), they just don't move. */
+@media (prefers-reduced-motion: reduce) {
+    @keyframes fade-up {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    .animate-fade-up {
+        animation: fade-up 0.2s ease-out both;
+    }
+}
+
+/*
+ * Motion — rtlayer's signature settle: 0.55s cubic-bezier(0.22, 1, 0.36, 1)
+ * (fast start, long soft landing). Decorative motion lives behind
+ * prefers-reduced-motion; nothing here ever gates input.
+ */
 @media (prefers-reduced-motion: no-preference) {
     @keyframes fade-up {
         from {
             opacity: 0;
-            transform: translateY(8px);
+            transform: translateY(10px);
         }
         to {
             opacity: 1;
@@ -139,13 +226,13 @@ button:not(:disabled),
         }
     }
     .animate-fade-up {
-        animation: fade-up 0.35s ease-out both;
+        animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     @keyframes ping-ring {
         0% {
             transform: scale(1);
-            opacity: 0.6;
+            opacity: 0.55;
         }
         80%,
         100% {
@@ -160,5 +247,121 @@ button:not(:disabled),
         border-radius: 9999px;
         background: var(--success);
         animation: ping-ring 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    /* Three bouncing dots — the tutor is thinking. */
+    @keyframes typing-bounce {
+        0%,
+        60%,
+        100% {
+            transform: translateY(0);
+            opacity: 0.35;
+        }
+        30% {
+            transform: translateY(-3px);
+            opacity: 1;
+        }
+    }
+    .typing-dots span {
+        animation: typing-bounce 1.2s ease-in-out infinite;
+    }
+    .typing-dots span:nth-child(2) {
+        animation-delay: 0.15s;
+    }
+    .typing-dots span:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    /* Stat tiles / chips arriving with a soft pop. */
+    @keyframes pop-in {
+        from {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    .animate-pop-in {
+        animation: pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* Chart bars grow from the baseline; stagger via inline animation-delay. */
+    @keyframes bar-rise {
+        from {
+            transform: scaleY(0);
+        }
+        to {
+            transform: scaleY(1);
+        }
+    }
+    .animate-bar-rise {
+        transform-origin: bottom;
+        animation: bar-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* Menus rise into place (rtlayer's dropdown entrance). */
+    @keyframes menu-in {
+        from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .menu-content[data-state="open"] {
+        animation: menu-in 0.15s ease-out both;
+    }
+
+    /* Dialogs leave the way they arrived (Radix waits for the animation). */
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes fade-out-down {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+    }
+    .dialog-overlay[data-state="open"] {
+        animation: fade-in 0.2s ease-out both;
+    }
+    .dialog-overlay[data-state="closed"] {
+        animation: fade-in 0.15s ease-in reverse both;
+    }
+    .dialog-content[data-state="closed"] {
+        animation: fade-out-down 0.15s ease-in both;
+    }
+
+    /* One-shot celebration confetti; each piece gets inline --dx/--rot/delay. */
+    @keyframes confetti-fall {
+        0% {
+            opacity: 1;
+            transform: translate(0, 0) rotate(0deg);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(var(--dx, 0px), 140px) rotate(var(--rot, 320deg));
+        }
+    }
+    .confetti-piece {
+        position: absolute;
+        top: 0;
+        width: 7px;
+        height: 11px;
+        border-radius: 2px;
+        animation: confetti-fall 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 }
