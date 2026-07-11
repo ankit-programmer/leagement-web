@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { IconBadge } from "@/components/ui/IconBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { COUNTRY_CODES, splitPhone } from "@/lib/country-codes";
 import { useMe, useUpdateMe } from "@/lib/queries/stats";
 
 const TIMEZONES: string[] =
@@ -22,7 +23,8 @@ export default function SettingsPage() {
   const [retention, setRetention] = useState(0.9);
   const [newPerDay, setNewPerDay] = useState(20);
   const [aiModel, setAiModel] = useState("");
-  const [phone, setPhone] = useState("");
+  const [dialCode, setDialCode] = useState("91");
+  const [nationalNumber, setNationalNumber] = useState("");
   const [coachEnabled, setCoachEnabled] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,9 @@ export default function SettingsPage() {
     setRetention(me.retentionTarget);
     setNewPerDay(me.newCardsPerDay);
     setAiModel(me.aiModel ?? "");
-    setPhone(me.phone ?? "");
+    const { dial, national } = splitPhone(me.phone);
+    setDialCode(dial);
+    setNationalNumber(national);
     setCoachEnabled(me.coachEnabled ?? false);
   }, [me]);
 
@@ -77,8 +81,9 @@ export default function SettingsPage() {
               event.preventDefault();
               setSaved(false);
               setError(null);
-              if (coachSupported && coachEnabled && !phone.trim()) {
-                setError("Add your WhatsApp number to enable the coach.");
+              const national = nationalNumber.replace(/\D/g, "");
+              if (coachSupported && coachEnabled && (national.length < 6 || national.length > 12)) {
+                setError("Add your WhatsApp number (6–12 digits) to enable the coach.");
                 return;
               }
               updateMe.mutate(
@@ -89,7 +94,7 @@ export default function SettingsPage() {
                   newCardsPerDay: newPerDay,
                   aiModel: aiModel.trim() || null,
                   // Old APIs reject unknown fields (strict schema) — only send when supported.
-                  ...(coachSupported ? { phone: phone.trim() || null, coachEnabled } : {}),
+                  ...(coachSupported ? { phone: national ? `${dialCode}${national}` : null, coachEnabled } : {}),
                 },
                 {
                   onSuccess: () => setSaved(true),
@@ -183,14 +188,36 @@ export default function SettingsPage() {
                   </Switch.Root>
                 </div>
                 {coachEnabled ? (
-                  <Input
-                    label="WhatsApp number (with country code)"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="91 98765 43210"
-                    className="font-mono"
-                  />
+                  <div className="space-y-1.5">
+                    <span className="block text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
+                      WhatsApp number
+                    </span>
+                    <div className="flex gap-2">
+                      <select
+                        value={dialCode}
+                        onChange={(e) => setDialCode(e.target.value)}
+                        aria-label="Country"
+                        className="w-32 shrink-0 rounded-field border border-hairline bg-surface px-2 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        {COUNTRY_CODES.map((country) => (
+                          <option key={`${country.dial}-${country.name}`} value={country.dial}>
+                            {country.flag} +{country.dial} {country.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        type="tel"
+                        value={nationalNumber}
+                        onChange={(e) => setNationalNumber(e.target.value)}
+                        placeholder="98765 43210"
+                        aria-label="Phone number without country code"
+                        className="font-mono"
+                      />
+                    </div>
+                    <span className="block text-xs text-ink-faint">
+                      Pick your country — no need to know the dial code.
+                    </span>
+                  </div>
                 ) : null}
               </div>
             ) : null}

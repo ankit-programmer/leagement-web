@@ -47,7 +47,7 @@ export function GradeBar({ onGrade, disabled }: { onGrade: (rating: Rating) => v
           className={`flex flex-col items-center gap-0.5 rounded-btn border px-3 py-2.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50 ${PRESS} ${classes}`}
         >
           {label}
-          <kbd className="rounded border border-current/25 px-1 font-mono text-[10px] font-normal leading-4 opacity-60">
+          <kbd className="hidden rounded border border-current/25 px-1 font-mono text-[10px] font-normal leading-4 opacity-60 sm:inline-block">
             {key}
           </kbd>
         </button>

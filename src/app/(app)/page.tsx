@@ -14,7 +14,6 @@ import { CardSkeleton } from "@/components/ui/Skeleton";
 import { deckGradient } from "@/lib/deck-accent";
 import { useCreateDeck, useDecks } from "@/lib/queries/decks";
 import { useOverviewStats } from "@/lib/queries/stats";
-import type { DeckCounts } from "@/lib/types";
 
 /** Every deck wears its own gradient and initial — identity at a glance. */
 function DeckBadge({ id, name }: { id: string; name: string }) {
@@ -29,31 +28,6 @@ function DeckBadge({ id, name }: { id: string; name: string }) {
   );
 }
 
-/** Thin new/learning/known strip — the deck's maturity in one glance. */
-function MaturityStrip({ counts }: { counts: DeckCounts }) {
-  const known = Math.max(0, counts.total - counts.new - counts.learning);
-  const segments = [
-    { value: counts.new, color: "#16a34a", label: "new" },
-    { value: counts.learning, color: "#d97706", label: "learning" },
-    { value: known, color: "#0090f6", label: "known" },
-  ].filter((segment) => segment.value > 0);
-  if (counts.total === 0) return null;
-  return (
-    <div
-      className="flex h-1.5 gap-[2px] overflow-hidden rounded-full"
-      role="img"
-      aria-label={segments.map((s) => `${s.value} ${s.label}`).join(", ")}
-    >
-      {segments.map((segment) => (
-        <div
-          key={segment.label}
-          style={{ width: `${(segment.value / counts.total) * 100}%`, backgroundColor: segment.color }}
-          className="rounded-full"
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { data: decks, isLoading, isFetching, isError, error, refetch } = useDecks();
@@ -150,10 +124,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <MaturityStrip counts={deck.counts} />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-1.5">
                       <div className="flex flex-wrap gap-1.5">
                         {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
                         {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
