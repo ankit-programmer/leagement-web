@@ -164,7 +164,7 @@ export default function SettingsPage() {
                     </p>
                     <p className="mt-1 text-xs text-ink-faint">
                       An evening reminder only on days you need it, and a Sunday summary when you
-                      don&apos;t. Reply STOP anytime.
+                      don&apos;t. Turn it off here anytime — replies to the messages aren&apos;t read.
                     </p>
                   </div>
                   <Switch.Root
