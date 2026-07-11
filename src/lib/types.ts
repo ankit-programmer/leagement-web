@@ -11,6 +11,9 @@ export interface User {
   aiProvider: string;
   aiModel: string | null;
   newCardsPerDay: number;
+  /** Optional: absent while the deployed API predates the WhatsApp coach (deploy skew). */
+  phone?: string | null;
+  coachEnabled?: boolean;
   createdAt: string;
 }
 

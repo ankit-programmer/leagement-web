@@ -1,6 +1,7 @@
 "use client";
 
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import * as Switch from "@radix-ui/react-switch";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -21,8 +22,13 @@ export default function SettingsPage() {
   const [retention, setRetention] = useState(0.9);
   const [newPerDay, setNewPerDay] = useState(20);
   const [aiModel, setAiModel] = useState("");
+  const [phone, setPhone] = useState("");
+  const [coachEnabled, setCoachEnabled] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Absent field = the deployed API predates the coach; hide the section.
+  const coachSupported = me?.coachEnabled !== undefined;
 
   useEffect(() => {
     if (!me) return;
@@ -31,6 +37,8 @@ export default function SettingsPage() {
     setRetention(me.retentionTarget);
     setNewPerDay(me.newCardsPerDay);
     setAiModel(me.aiModel ?? "");
+    setPhone(me.phone ?? "");
+    setCoachEnabled(me.coachEnabled ?? false);
   }, [me]);
 
   if (isLoading) {
@@ -62,6 +70,10 @@ export default function SettingsPage() {
               event.preventDefault();
               setSaved(false);
               setError(null);
+              if (coachSupported && coachEnabled && !phone.trim()) {
+                setError("Add your WhatsApp number to enable the coach.");
+                return;
+              }
               updateMe.mutate(
                 {
                   timezone,
@@ -69,6 +81,8 @@ export default function SettingsPage() {
                   retentionTarget: retention,
                   newCardsPerDay: newPerDay,
                   aiModel: aiModel.trim() || null,
+                  // Old APIs reject unknown fields (strict schema) — only send when supported.
+                  ...(coachSupported ? { phone: phone.trim() || null, coachEnabled } : {}),
                 },
                 {
                   onSuccess: () => setSaved(true),
@@ -140,6 +154,39 @@ export default function SettingsPage() {
               placeholder="gemini-2.5-flash"
               className="font-mono"
             />
+
+            {coachSupported ? (
+              <div className="space-y-4 border-t border-hairline pt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
+                      WhatsApp coach
+                    </p>
+                    <p className="mt-1 text-xs text-ink-faint">
+                      An evening reminder only on days you need it, and a Sunday summary when you
+                      don&apos;t. Reply STOP anytime.
+                    </p>
+                  </div>
+                  <Switch.Root
+                    checked={coachEnabled}
+                    onCheckedChange={setCoachEnabled}
+                    className="relative h-6 w-11 shrink-0 rounded-full border border-hairline bg-surface-subtle transition-colors data-[state=checked]:border-transparent data-[state=checked]:bg-brand"
+                  >
+                    <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-surface shadow-soft transition-transform data-[state=checked]:translate-x-[22px]" />
+                  </Switch.Root>
+                </div>
+                {coachEnabled ? (
+                  <Input
+                    label="WhatsApp number (with country code)"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="91 98765 43210"
+                    className="font-mono"
+                  />
+                ) : null}
+              </div>
+            ) : null}
 
             {error ? (
               <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
