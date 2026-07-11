@@ -16,6 +16,7 @@ import {
   type AnalyticsStats,
   type MentorNote,
   useAnalytics,
+  useMe,
   useMentorNote,
   useOverviewStats,
 } from "@/lib/queries/stats";
@@ -130,6 +131,154 @@ function WeekAheadChart({ data }: { data: AnalyticsStats["upcomingWeek"] }) {
   );
 }
 
+/**
+ * Rolling 7-day true retention as an SVG line. Days whose trailing window has
+ * too few scheduled reviews arrive as null and render as GAPS — an honest
+ * break in the line, never an interpolated guess.
+ */
+function RetentionTrendChart({
+  data,
+  target,
+}: {
+  data: AnalyticsStats["retentionTrend"];
+  target?: number;
+}) {
+  const valid = data
+    .map((point, index) => ({ ...point, index }))
+    .filter((point): point is typeof point & { retention: number } => point.retention !== null);
+
+  if (valid.length < 2) {
+    return (
+      <p className="py-8 text-center text-sm text-ink-muted">
+        Your retention trend appears after a week of scheduled reviews — keep reviewing.
+      </p>
+    );
+  }
+
+  const yMax = 1;
+  const yMin = Math.min(0.6, Math.floor(Math.min(...valid.map((p) => p.retention)) * 10) / 10);
+  const x = (index: number) => (index / (data.length - 1)) * 100;
+  const y = (retention: number) => ((yMax - retention) / (yMax - yMin)) * 100;
+
+  // Consecutive non-null runs become separate line segments; lone points get a dot.
+  const segments: Array<Array<{ x: number; y: number }>> = [];
+  let run: Array<{ x: number; y: number }> = [];
+  data.forEach((point, index) => {
+    if (point.retention === null) {
+      if (run.length > 0) segments.push(run);
+      run = [];
+    } else {
+      run.push({ x: x(index), y: y(point.retention) });
+    }
+  });
+  if (run.length > 0) segments.push(run);
+
+  const ticks = [1, 0.9, 0.8, 0.7, 0.6].filter((tick) => tick >= yMin);
+  const latest = valid[valid.length - 1];
+  // Direction: compare against the nearest valid point ~4 weeks earlier.
+  const earlier = [...valid].reverse().find((point) => point.index <= latest.index - 28);
+  const deltaPts = earlier ? Math.round((latest.retention - earlier.retention) * 100) : null;
+
+  return (
+    <div>
+      <p className="text-xs text-ink-muted">
+        Last 7 days: <span className="font-mono font-bold text-ink">{Math.round(latest.retention * 100)}%</span>
+        {deltaPts !== null ? (
+          <span className={deltaPts >= 0 ? "text-success-ink" : "text-danger-ink"}>
+            {" "}
+            {deltaPts >= 0 ? "▲" : "▼"} {Math.abs(deltaPts)}pt{Math.abs(deltaPts) === 1 ? "" : "s"} vs last month
+          </span>
+        ) : null}
+      </p>
+      <div className="relative mt-2 h-36" role="img" aria-label="Rolling 7-day retention over the last 90 days">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          {ticks.map((tick) => (
+            <line
+              key={tick}
+              x1="0"
+              x2="100"
+              y1={y(tick)}
+              y2={y(tick)}
+              stroke="var(--hairline)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {target !== undefined && target >= yMin ? (
+            <line
+              x1="0"
+              x2="100"
+              y1={y(target)}
+              y2={y(target)}
+              stroke="var(--ink-faint)"
+              strokeWidth="1"
+              strokeDasharray="4 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {segments.map((segment) =>
+            segment.length === 1 ? (
+              <circle
+                key={`p-${segment[0].x}`}
+                cx={segment[0].x}
+                cy={segment[0].y}
+                r="2"
+                fill="var(--brand)"
+              />
+            ) : (
+              <polyline
+                key={`s-${segment[0].x}`}
+                points={segment.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke="var(--brand)"
+                strokeWidth="2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ),
+          )}
+        </svg>
+        {/* tick labels sit above the gridlines they name */}
+        {ticks.map((tick) => (
+          <span
+            key={tick}
+            className="absolute left-0 -translate-y-full font-mono text-[10px] text-ink-faint"
+            style={{ top: `${y(tick)}%` }}
+          >
+            {Math.round(tick * 100)}%
+          </span>
+        ))}
+        {target !== undefined && target >= yMin ? (
+          <span
+            className="absolute right-0 -translate-y-full font-mono text-[10px] text-ink-faint"
+            style={{ top: `${y(target)}%` }}
+          >
+            target
+          </span>
+        ) : null}
+        {/* hover columns — same chip idiom as the bar charts */}
+        <div className="absolute inset-0 flex">
+          {data.map((point) => (
+            <div key={point.date} className="group relative h-full flex-1">
+              <div className="pointer-events-none absolute -top-2 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip border border-hairline bg-surface px-2 py-0.5 font-mono text-[10px] text-ink shadow-raised group-hover:block">
+                {point.retention !== null
+                  ? `${Math.round(point.retention * 100)}% · ${point.attempts} reviews · ${point.date.slice(5)}`
+                  : `${point.attempts} review${point.attempts === 1 ? "" : "s"} in window · ${point.date.slice(5)}`}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-1 flex justify-between border-t border-hairline pt-1 font-mono text-[10px] text-ink-faint">
+        <span>{data[0]?.date.slice(5)}</span>
+        <span>rolling 7-day · gaps = under 10 reviews</span>
+        <span>{data[data.length - 1]?.date.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
 function MaturityBar({ cardsByState }: { cardsByState: AnalyticsStats["cardsByState"] }) {
   const total = STATE_SERIES.reduce((sum, s) => sum + cardsByState[s.key], 0);
   if (total === 0) return null;
@@ -167,6 +316,7 @@ function ProgressContent() {
   const { data: analytics, isLoading, isFetching, isError, error, refetch } = useAnalytics(selectedDeck);
   const { data: overview } = useOverviewStats();
   const { data: decks } = useDecks();
+  const { data: me } = useMe();
   const [range, setRange] = useState<30 | 90>(30);
   const mentor = useMentorNote();
   const [note, setNote] = useState<MentorNote | null>(null);
@@ -331,6 +481,13 @@ function ProgressContent() {
                 </div>
               </div>
               <ReviewsPerDayChart data={analytics.reviewsPerDay} days={range} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-4">
+              <h2 className="font-bold tracking-[-0.01em]">Retention trend</h2>
+              <RetentionTrendChart data={analytics.retentionTrend} target={me?.retentionTarget} />
             </CardContent>
           </Card>
 

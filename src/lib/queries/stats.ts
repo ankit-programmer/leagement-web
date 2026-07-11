@@ -33,6 +33,8 @@ export interface AnalyticsStats {
   upcomingWeek: Array<{ date: string; count: number }>;
   troubleCards: Array<{ id: string; deckId: string; front: string; lapses: number; sureWrong: boolean }>;
   effort: { avgSeconds: number | null; minutesToday: number | null };
+  /** Rolling 7-day true retention per day (last 90); null = window under 10 reviews. */
+  retentionTrend: Array<{ date: string; retention: number | null; attempts: number }>;
 }
 
 export function useAnalytics(deckId?: string) {
