@@ -6,7 +6,11 @@ import { track } from "@/lib/analytics";
 import { api } from "@/lib/api";
 import type { Card, Confidence, Rating, ReviewLog } from "@/lib/types";
 
-const RECIRCULATE_HORIZON_MS = 15 * 60_000;
+/** Only imminently-due learning steps (the ~1m Again step) recirculate inside
+ *  the session; longer steps (the 10m Good step) go through the server's
+ *  waiting flow instead — the break screen with a countdown that auto-resumes.
+ *  A 15-minute horizon here made a lone learning card repeat back-to-back. */
+const RECIRCULATE_HORIZON_MS = 2 * 60_000;
 /** One bad card must not make a session unfinishable — after 8 in-session
  *  re-appearances it falls to its scheduled (tomorrow) due time. */
 const MAX_REQUEUES_PER_CARD = 8;
@@ -212,7 +216,10 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
           (updated.state === 1 || updated.state === 3) &&
           new Date(updated.due).getTime() <= Date.now() + RECIRCULATE_HORIZON_MS;
         let nextQueue = rest;
-        if (dueSoon && count < MAX_REQUEUES_PER_CARD) {
+        // Requeue only BEHIND other cards — that's what gives the step its
+        // spacing. A lone learning card drains the queue instead, and the
+        // waiting screen (with countdown + auto-resume) takes over.
+        if (dueSoon && rest.length > 0 && count < MAX_REQUEUES_PER_CARD) {
           requeues.current.set(updated.id, count + 1);
           nextQueue = [...rest, updated];
         }
