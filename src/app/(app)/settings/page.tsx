@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const { data: me, isLoading } = useMe();
   const updateMe = useUpdateMe();
 
+  const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("Asia/Calcutta");
   // Number fields keep their STRING while editing — a controlled number input
   // that parses on every keystroke turns a cleared field into a sticky "0"
@@ -44,6 +45,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!me) return;
+    setName(me.name ?? "");
     setTimezone(me.timezone);
     setDayStartHour(String(me.dayStartHour));
     setRetention(me.retentionTarget);
@@ -101,6 +103,8 @@ export default function SettingsPage() {
               }
               updateMe.mutate(
                 {
+                  // Sent only when edited — old APIs (strict schema) reject unknown fields.
+                  ...(name.trim() !== (me?.name ?? "") ? { name: name.trim() || null } : {}),
                   timezone,
                   dayStartHour: parsedDayStart,
                   retentionTarget: retention,
@@ -116,6 +120,14 @@ export default function SettingsPage() {
               );
             }}
           >
+            <Input
+              label="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="How the app and coach should address you"
+              maxLength={100}
+            />
+
             <label className="block space-y-1.5">
               <span className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">
                 Time zone

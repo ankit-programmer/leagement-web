@@ -97,7 +97,7 @@ export function useMe() {
 export function useUpdateMe() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (patch: Partial<Pick<User, "timezone" | "dayStartHour" | "retentionTarget" | "aiProvider" | "aiModel" | "newCardsPerDay" | "phone" | "coachEnabled">>) =>
+    mutationFn: async (patch: Partial<Pick<User, "name" | "timezone" | "dayStartHour" | "retentionTarget" | "aiProvider" | "aiModel" | "newCardsPerDay" | "phone" | "coachEnabled">>) =>
       (await api<User>("/auth/me", { method: "PATCH", body: patch })).data,
     onSuccess: (user, patch) => {
       track("settings_changed", { fields: Object.keys(patch) });
