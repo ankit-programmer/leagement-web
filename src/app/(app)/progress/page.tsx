@@ -514,7 +514,7 @@ function ProgressContent() {
                 label="Mastered"
                 value={`${analytics.totals.mastered.toLocaleString()} / ${analytics.totals.cards.toLocaleString()}`}
                 delay={120}
-                hint="recalled correctly on its last 5 review days"
+                hint="recalled correctly on its last 3 review days"
               />
             ) : (
               <StatTile label="Cards" value={analytics.totals.cards.toLocaleString()} delay={120} />
