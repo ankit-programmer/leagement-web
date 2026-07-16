@@ -15,6 +15,17 @@ const RECIRCULATE_HORIZON_MS = 2 * 60_000;
  *  re-appearances it falls to its scheduled (tomorrow) due time. */
 const MAX_REQUEUES_PER_CARD = 8;
 
+/** Fisher–Yates. The server orders the queue deterministically (due date,
+ *  creation date); shuffling breaks the every-session-same-order monotony. */
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j] as T, result[i] as T];
+  }
+  return result;
+}
+
 export interface SessionStats {
   reviewed: number;
   again: number;
@@ -71,7 +82,9 @@ export function useReviewSession(deckId: string, options: { practice?: boolean }
       const counts = meta?.counts as
         | { pendingLearning?: number; nextLearningDueAt?: string | null; newRemainingToday?: number }
         | undefined;
-      setQueue(data);
+      const learning = data.filter((c) => c.state === 1 || c.state === 3);
+      const rest = shuffle(data.filter((c) => c.state !== 1 && c.state !== 3));
+      setQueue([...learning, ...rest]);
       setPending({
         count: counts?.pendingLearning ?? 0,
         nextDueAt: counts?.nextLearningDueAt ?? null,
