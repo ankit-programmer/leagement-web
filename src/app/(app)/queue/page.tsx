@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, PencilSquareIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
 import { Button } from "@/components/ui/Button";
@@ -109,7 +109,6 @@ function groupByDeck(rows: GeneratedCard[]): DeckGroup[] {
 function QueueContent() {
   const { data: pending, isLoading, isFetching, isError, error, refetch } = usePendingGenerated();
   const bulk = useBulkDecide();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedDeck = searchParams.get("deck");
 
@@ -117,8 +116,10 @@ function QueueContent() {
   const visible = (pending ?? []).filter((row) => !selectedDeck || row.deckId === selectedDeck);
   const visibleGroups = groupByDeck(visible);
 
+  // Shallow update — a router.replace() RSC round-trip makes the pill feel
+  // dead on slow connections; history.replaceState syncs useSearchParams instantly.
   const selectDeck = (deckId: string | null) =>
-    router.replace(deckId ? `/queue?deck=${deckId}` : "/queue");
+    window.history.replaceState(null, "", deckId ? `/queue?deck=${deckId}` : "/queue");
 
   const filterPill = (active: boolean) =>
     `rounded-full px-3 py-1 text-xs font-semibold transition-colors ${

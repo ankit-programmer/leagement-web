@@ -51,9 +51,12 @@ export interface ApiResult<T> {
 
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: boolean } = {},
+  options: { method?: string; body?: unknown; auth?: boolean; timeoutMs?: number } = {},
 ): Promise<ApiResult<T>> {
-  const { method = "GET", body, auth = true } = options;
+  // AI-backed endpoints (generation, mentor, Feynman) pass a higher timeoutMs —
+  // model calls legitimately run past 30s and an early abort shows a false
+  // error while the server finishes the work anyway.
+  const { method = "GET", body, auth = true, timeoutMs = 30_000 } = options;
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
@@ -68,9 +71,13 @@ export async function api<T>(
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       // A hung cold start should fail visibly, not spin forever.
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-  } catch {
+  } catch (cause) {
+    // A timeout is NOT "unreachable" — the server may still be working.
+    if (cause instanceof DOMException && (cause.name === "TimeoutError" || cause.name === "AbortError")) {
+      throw new ApiError("The server is taking too long — it may still be working on it.", 0);
+    }
     throw new ApiError("Server is waking up or unreachable — retrying usually fixes it.", 0);
   }
 

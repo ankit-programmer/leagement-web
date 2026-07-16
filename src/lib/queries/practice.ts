@@ -20,7 +20,13 @@ export function useCreatePractice(deckId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (request: string) =>
-      (await api<PracticeSession>("/practice-sessions", { method: "POST", body: { deckId, request } })).data,
+      (
+        await api<PracticeSession>("/practice-sessions", {
+          method: "POST",
+          body: { deckId, request },
+          timeoutMs: 60_000,
+        })
+      ).data,
     onSuccess: (session) => {
       track("practice_created", { cards: session.cards.length });
       queryClient.setQueryData(["practice", deckId], session);

@@ -50,7 +50,7 @@ export function useFeynmanSession(sessionId: string | null) {
 export function useSuggestTopics() {
   return useMutation({
     mutationFn: async (deckId: string) =>
-      (await api<{ topics: string[] }>(`/decks/${deckId}/feynman-topics`)).data.topics,
+      (await api<{ topics: string[] }>(`/decks/${deckId}/feynman-topics`, { timeoutMs: 60_000 })).data.topics,
     onSuccess: () => track("feynman_topics_suggested"),
   });
 }
@@ -59,7 +59,8 @@ export function useStartFeynman(deckId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (topic: string) =>
-      (await api<FeynmanSession>("/feynman/sessions", { method: "POST", body: { deckId, topic } })).data,
+      (await api<FeynmanSession>("/feynman/sessions", { method: "POST", body: { deckId, topic }, timeoutMs: 60_000 }))
+        .data,
     onSuccess: (session) => {
       track("feynman_session_started");
       queryClient.setQueryData(["feynman-session", session.id], session);
@@ -72,8 +73,13 @@ export function useSendFeynmanMessage(sessionId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (content: string) =>
-      (await api<FeynmanSession>(`/feynman/sessions/${sessionId}/messages`, { method: "POST", body: { content } }))
-        .data,
+      (
+        await api<FeynmanSession>(`/feynman/sessions/${sessionId}/messages`, {
+          method: "POST",
+          body: { content },
+          timeoutMs: 60_000,
+        })
+      ).data,
     onSuccess: (session) => {
       track("feynman_message_sent", { turn: session.messages?.filter((m) => m.role === "user").length ?? 0 });
       queryClient.setQueryData(["feynman-session", session.id], session);
@@ -85,7 +91,7 @@ export function useEndFeynman(deckId: string, sessionId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () =>
-      (await api<FeynmanSession>(`/feynman/sessions/${sessionId}/end`, { method: "POST" })).data,
+      (await api<FeynmanSession>(`/feynman/sessions/${sessionId}/end`, { method: "POST", timeoutMs: 60_000 })).data,
     onSuccess: (session) => {
       const turns = session.messages?.filter((m) => m.role === "user").length ?? 0;
       const minutes = Math.max(1, Math.round((Date.now() - new Date(session.createdAt).getTime()) / 60_000));

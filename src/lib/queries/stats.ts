@@ -82,7 +82,7 @@ export interface MentorNote {
 export function useMentorNote() {
   return useMutation({
     mutationFn: async (deckId?: string) =>
-      (await api<MentorNote>("/stats/mentor", { method: "POST", body: { deckId } })).data,
+      (await api<MentorNote>("/stats/mentor", { method: "POST", body: { deckId }, timeoutMs: 60_000 })).data,
     onSuccess: (_note, deckId) => track("mentor_requested", { deckScoped: Boolean(deckId) }),
   });
 }

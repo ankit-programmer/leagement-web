@@ -2,7 +2,7 @@
 
 import { ChartBarIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CardEditor } from "@/components/cards/CardEditor";
@@ -343,7 +343,6 @@ function MaturityBar({ cardsByState }: { cardsByState: AnalyticsStats["cardsBySt
 }
 
 function ProgressContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedDeck = searchParams.get("deck") ?? undefined;
   const { data: analytics, isLoading, isFetching, isError, error, refetch } = useAnalytics(selectedDeck);
@@ -378,7 +377,10 @@ function ProgressContent() {
   const selectDeck = (deckId: string | null) => {
     setNote(null); // a note is scoped to the filter it was asked under
     setMentorError(null);
-    router.replace(deckId ? `/progress?deck=${deckId}` : "/progress", { scroll: false });
+    // Shallow update — router.replace() does an RSC round-trip to the server,
+    // which on a slow connection makes the pill look dead. history.replaceState
+    // keeps useSearchParams in sync client-side, instantly.
+    window.history.replaceState(null, "", deckId ? `/progress?deck=${deckId}` : "/progress");
   };
   const filterPill = (active: boolean) =>
     `rounded-full px-3 py-1 text-xs font-semibold transition-colors ${

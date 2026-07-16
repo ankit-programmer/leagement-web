@@ -40,14 +40,25 @@ export function useGenerate() {
       sourceUrl?: string;
       maxCards?: number;
     }) =>
-      (await api<{ batchId: string; cards: GeneratedCard[] }>("/generations", { method: "POST", body: input }))
-        .data,
+      (
+        await api<{ batchId: string; cards: GeneratedCard[] }>("/generations", {
+          method: "POST",
+          body: input,
+          // Model calls with a PDF/URL source can legitimately run for minutes.
+          timeoutMs: 150_000,
+        })
+      ).data,
     onMutate: (input) => track("generation_requested", { source: generationSource(input) }),
     onSuccess: (data, input) => {
       track("generation_succeeded", { source: generationSource(input), cards: data.cards.length });
       queryClient.invalidateQueries({ queryKey: ["generated", "pending"] });
     },
-    onError: (_error, input) => track("generation_failed", { source: generationSource(input) }),
+    onError: (_error, input) => {
+      track("generation_failed", { source: generationSource(input) });
+      // A client-side timeout doesn't stop the server — if it finished anyway,
+      // the queue should still show the cards.
+      queryClient.invalidateQueries({ queryKey: ["generated", "pending"] });
+    },
   });
 }
 

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input, Textarea } from "@/components/ui/Field";
+import { ApiError } from "@/lib/api";
 import { uploadImage } from "@/lib/firebase";
 import { useGenerate } from "@/lib/queries/generation";
 
@@ -86,7 +87,12 @@ export function GenerateDialog({
             onOpenChange(false);
             router.push(`/queue?deck=${deckId}`);
           },
-          onError: (e) => setError(e.message),
+          onError: (e) =>
+            setError(
+              e instanceof ApiError && e.status === 0
+                ? "This is taking longer than usual — the cards may still arrive; check the approval queue in a minute."
+                : e.message,
+            ),
         },
       );
     } catch (e) {
@@ -97,7 +103,12 @@ export function GenerateDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      // Closing mid-generation would hide the eventual error (or success) —
+      // the dialog stays up until the request settles.
+      onOpenChange={(next) => {
+        if (!next && busy) return;
+        onOpenChange(next);
+      }}
       title="Generate cards with AI"
       description="Link a blog post or PDF, paste notes, or snap a photo of them. Drafted cards go to the approval queue — nothing enters the deck until you approve it."
     >
@@ -173,7 +184,7 @@ export function GenerateDialog({
           <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p>
         ) : null}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
