@@ -14,6 +14,8 @@ export interface User {
   /** Optional: absent while the deployed API predates the WhatsApp coach (deploy skew). */
   phone?: string | null;
   coachEnabled?: boolean;
+  /** Only on GET /auth/me, and absent on older API deploys — reveals the admin dashboard. */
+  isAdmin?: boolean;
   createdAt: string;
 }
 

@@ -2,6 +2,7 @@
 
 import { CheckIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import * as Switch from "@radix-ui/react-switch";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -68,14 +69,24 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <div className="flex items-center gap-3">
-        <IconBadge>
-          <Cog6ToothIcon />
-        </IconBadge>
-        <div>
-          <h1 className="text-2xl font-bold tracking-[-0.025em]">Settings</h1>
-          <p className="mt-0.5 text-sm text-ink-muted">{me?.email}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <IconBadge>
+            <Cog6ToothIcon />
+          </IconBadge>
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.025em]">Settings</h1>
+            <p className="mt-0.5 text-sm text-ink-muted">{me?.email}</p>
+          </div>
         </div>
+        {me?.isAdmin ? (
+          <Link
+            href="/admin"
+            className="rounded-btn bg-surface-subtle px-3 py-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
+          >
+            Admin dashboard →
+          </Link>
+        ) : null}
       </div>
 
       <Card>
