@@ -113,6 +113,8 @@ export function useCreateProblem() {
       pattern?: string;
       difficulty?: string;
       deckId?: string;
+      /** ISO date-time; omitted = due immediately. */
+      nextDue?: string;
     }) => (await api<Problem>("/problems", { method: "POST", body: input })).data,
     onSuccess: () => {
       track("problem_added");

@@ -4,7 +4,7 @@ import { ArrowTopRightOnSquareIcon, PlayIcon, PlusIcon, PuzzlePieceIcon } from "
 import Link from "next/link";
 import { useState } from "react";
 import { useActiveAttempt } from "@/components/problems/attempt-timer";
-import { DIFFICULTY_TONE, ERROR_CLASS_META, RESULT_META, dueLabel } from "@/components/problems/meta";
+import { DIFFICULTY_TONE, ERROR_CLASS_META, RESULT_META, dueLabel, fromDateInput } from "@/components/problems/meta";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,12 +19,15 @@ function AddProblemForm({ deckId }: { deckId?: string }) {
   const [url, setUrl] = useState("");
   const [pattern, setPattern] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [firstDue, setFirstDue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const createProblem = useCreateProblem();
+  const fieldClass =
+    "rounded-field border border-hairline bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand";
 
   return (
     <form
-      className="grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto_auto]"
+      className="grid gap-2 sm:grid-cols-4"
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
@@ -34,6 +37,7 @@ function AddProblemForm({ deckId }: { deckId?: string }) {
             url: url.trim() || undefined,
             pattern: pattern.trim() || undefined,
             difficulty: difficulty || undefined,
+            nextDue: firstDue ? fromDateInput(firstDue) : undefined,
             deckId,
           },
           {
@@ -42,30 +46,38 @@ function AddProblemForm({ deckId }: { deckId?: string }) {
               setUrl("");
               setPattern("");
               setDifficulty("");
+              // firstDue is kept on purpose: bulk-adding a batch for the same
+              // future day shouldn't require re-picking the date every row.
             },
             onError: (e) => setError(e.message),
           },
         );
       }}
     >
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Problem name" aria-label="Problem name" required maxLength={300} />
-      <Input value={url} onChange={(e) => setUrl(e.target.value)} type="url" placeholder="https://leetcode.com/problems/…" aria-label="Problem link" />
+      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Problem name" aria-label="Problem name" required maxLength={300} className="sm:col-span-2" />
+      <Input value={url} onChange={(e) => setUrl(e.target.value)} type="url" placeholder="https://leetcode.com/problems/…" aria-label="Problem link" className="sm:col-span-2" />
       <Input value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="pattern tag" aria-label="Pattern" maxLength={60} />
-      <select
-        value={difficulty}
-        onChange={(e) => setDifficulty(e.target.value)}
-        aria-label="Difficulty"
-        className="rounded-field border border-hairline bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
+      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} aria-label="Difficulty" className={fieldClass}>
         <option value="">difficulty</option>
         <option value="easy">easy</option>
         <option value="medium">medium</option>
         <option value="hard">hard</option>
       </select>
+      <input
+        type="date"
+        value={firstDue}
+        onChange={(e) => setFirstDue(e.target.value)}
+        aria-label="First practice date (empty = today)"
+        title="First practice date — leave empty for today"
+        className={fieldClass}
+      />
       <Button type="submit" busy={createProblem.isPending} busyLabel="Adding…" disabled={!name.trim()}>
         <PlusIcon className="h-4 w-4" /> Add
       </Button>
-      {error ? <p className="sm:col-span-5 rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p> : null}
+      <p className="text-xs text-ink-faint sm:col-span-4">
+        Date is the FIRST practice day — leave empty for today. It sticks between adds, so you can file a whole batch onto a future day.
+      </p>
+      {error ? <p className="sm:col-span-4 rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p> : null}
     </form>
   );
 }
