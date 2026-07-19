@@ -1,9 +1,16 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, FlagIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowLeftIcon,
+  ArrowTopRightOnSquareIcon,
+  ArrowsPointingOutIcon,
+  FlagIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PIP_OPEN_EVENT, pipSupported } from "@/components/problems/AttemptTimerWidget";
 import {
   type PhaseKey,
   discardAttempt,
@@ -201,6 +208,11 @@ export default function AttemptPage() {
             >
               Finish → post-mortem
             </Button>
+            {pipSupported() ? (
+              <Button variant="secondary" onClick={() => window.dispatchEvent(new Event(PIP_OPEN_EVENT))}>
+                <ArrowsPointingOutIcon className="h-4 w-4" /> Pop out
+              </Button>
+            ) : null}
             {problem.url ? (
               <a href={problem.url} target="_blank" rel="noreferrer">
                 <Button variant="secondary">

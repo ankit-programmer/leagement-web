@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { AttemptTimerWidget } from "@/components/problems/AttemptTimerWidget";
 import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/lib/auth";
@@ -91,6 +92,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className={isReview ? "flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-8 pb-24 sm:px-6 sm:pb-8"}>
         {children}
       </main>
+      <AttemptTimerWidget />
       {/* Mobile bottom tabs — thumb-reachable, app-like, hidden during review. */}
       {isReview ? null : (
         <nav
