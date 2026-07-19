@@ -13,6 +13,7 @@ import { QueryError } from "@/components/ui/QueryError";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { deckGradient } from "@/lib/deck-accent";
 import { useCreateDeck, useDecks } from "@/lib/queries/decks";
+import { useProblemStats } from "@/lib/queries/problems";
 import { useOverviewStats } from "@/lib/queries/stats";
 
 /** Every deck wears its own gradient and initial — identity at a glance. */
@@ -28,6 +29,33 @@ function DeckBadge({ id, name }: { id: string; name: string }) {
   );
 }
 
+
+/**
+ * Interview-prep practice loop lives at /problems; this strip surfaces it on
+ * the home page only for users who actually use it (or have problems due).
+ * Renders nothing on error too — old API deploys without the endpoint must
+ * not break the dashboard.
+ */
+function PracticeStrip() {
+  const { data: stats } = useProblemStats();
+  if (!stats || stats.activeProblems === 0) return null;
+  return (
+    <Link
+      href="/problems"
+      className="flex items-center justify-between gap-3 rounded-card border border-hairline bg-surface px-5 py-3 shadow-card transition-colors hover:border-brand/40"
+    >
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm font-semibold">Practice problems</span>
+        <span className="text-xs text-ink-faint">
+          {stats.practicedDaysLast7}/7 days this week
+        </span>
+      </div>
+      <span className={`font-mono text-sm font-bold ${stats.dueToday > 0 ? "text-brand" : "text-ink-faint"}`}>
+        {stats.dueToday > 0 ? `${stats.dueToday} due today →` : "none due →"}
+      </span>
+    </Link>
+  );
+}
 
 export default function DashboardPage() {
   const { data: decks, isLoading, isFetching, isError, error, refetch } = useDecks();
@@ -105,6 +133,8 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : null}
+
+      <PracticeStrip />
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
