@@ -4,6 +4,7 @@ import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/ou
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { clearFinishedAttempt, takeFinishedAttempt } from "@/components/problems/attempt-timer";
 import {
   ERROR_CLASS_META,
   RESULT_META,
@@ -80,6 +81,15 @@ export default function LogSessionPage() {
   const [descDraft, setDescDraft] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [timerFilled, setTimerFilled] = useState(false);
+
+  // A just-finished timed attempt prefills the time split (still editable).
+  useEffect(() => {
+    const finished = takeFinishedAttempt(id);
+    if (!finished) return;
+    setPhases(Object.fromEntries(Object.entries(finished.phaseMinutes).map(([key, value]) => [key, String(value)])));
+    setTimerFilled(true);
+  }, [id]);
 
   // The ladder's suggestion follows the chosen result until the user edits the date.
   useEffect(() => {
@@ -153,7 +163,10 @@ export default function LogSessionPage() {
         retire,
       },
       {
-        onSuccess: () => router.push(`/problems/${id}`),
+        onSuccess: () => {
+          clearFinishedAttempt();
+          router.push(`/problems/${id}`);
+        },
         onError: (e) => setFormError(e.message),
       },
     );
@@ -216,7 +229,11 @@ export default function LogSessionPage() {
             ) : null}
           </Step>
 
-          <Step n={3} title="Where did the time go?" hint="Estimates are fine — the FAT phase is the diagnosis.">
+          <Step
+            n={3}
+            title="Where did the time go?"
+            hint={timerFilled ? "⏱ filled from your timer — adjust freely." : "Estimates are fine — the FAT phase is the diagnosis."}
+          >
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {TIME_PHASES.map((p) => (
                 <label key={p.key} className="space-y-1">

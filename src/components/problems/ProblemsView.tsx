@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowTopRightOnSquareIcon, PlusIcon, PuzzlePieceIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, PlayIcon, PlusIcon, PuzzlePieceIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useState } from "react";
+import { useActiveAttempt } from "@/components/problems/attempt-timer";
 import { ERROR_CLASS_META, RESULT_META, dueLabel } from "@/components/problems/meta";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -69,7 +70,7 @@ function AddProblemForm({ deckId }: { deckId?: string }) {
   );
 }
 
-function ProblemRow({ problem }: { problem: ProblemListRow }) {
+function ProblemRow({ problem, attemptRunning }: { problem: ProblemListRow; attemptRunning: boolean }) {
   const due = dueLabel(problem.nextDue);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline/60 py-2.5 last:border-0">
@@ -85,6 +86,7 @@ function ProblemRow({ problem }: { problem: ProblemListRow }) {
           ) : null}
         </p>
         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
+          {attemptRunning ? <Pill tone="warning">⏱ attempt running</Pill> : null}
           {problem.pattern ? <Pill>{problem.pattern}</Pill> : null}
           {problem.difficulty ? <span>{problem.difficulty}</span> : null}
           <span>
@@ -98,9 +100,18 @@ function ProblemRow({ problem }: { problem: ProblemListRow }) {
           <span className={due.overdue ? "font-semibold text-danger" : ""}>{due.text}</span>
         </p>
       </div>
-      <Link href={`/problems/${problem.id}/log`}>
-        <Button variant="secondary">Log session</Button>
-      </Link>
+      <div className="flex gap-1.5">
+        <Link href={`/problems/${problem.id}/attempt`}>
+          <Button className="!px-3 !py-1.5 text-xs">
+            <PlayIcon className="h-3.5 w-3.5" /> {attemptRunning ? "Resume" : "Start"}
+          </Button>
+        </Link>
+        <Link href={`/problems/${problem.id}/log`}>
+          <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+            Log
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }
@@ -109,6 +120,7 @@ function ProblemRow({ problem }: { problem: ProblemListRow }) {
 export function ProblemsView({ deckId }: { deckId?: string }) {
   const { data: problems, isLoading, isError, error, refetch } = useProblems({ deckId });
   const { data: stats } = useProblemStats(deckId);
+  const { attempt } = useActiveAttempt();
   const [showRetired, setShowRetired] = useState(false);
 
   if (isLoading) {
@@ -180,7 +192,7 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
           ) : (
             <div className="mt-2">
               {dueList.map((problem) => (
-                <ProblemRow key={problem.id} problem={problem} />
+                <ProblemRow key={problem.id} problem={problem} attemptRunning={attempt?.problemId === problem.id} />
               ))}
             </div>
           )}
@@ -193,7 +205,7 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
             <h2 className="font-bold tracking-[-0.01em]">Scheduled</h2>
             <div className="mt-2">
               {upcoming.map((problem) => (
-                <ProblemRow key={problem.id} problem={problem} />
+                <ProblemRow key={problem.id} problem={problem} attemptRunning={attempt?.problemId === problem.id} />
               ))}
             </div>
           </CardContent>
@@ -209,7 +221,7 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
             {showRetired ? (
               <div className="mt-2">
                 {retired.map((problem) => (
-                  <ProblemRow key={problem.id} problem={problem} />
+                  <ProblemRow key={problem.id} problem={problem} attemptRunning={attempt?.problemId === problem.id} />
                 ))}
               </div>
             ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon, PlayIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -134,9 +134,16 @@ export default function ProblemDetailPage() {
             )}
           </p>
         </div>
-        <Link href={`/problems/${problem.id}/log`}>
-          <Button>Log session</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/problems/${problem.id}/attempt`}>
+            <Button>
+              <PlayIcon className="h-4 w-4" /> Start attempt
+            </Button>
+          </Link>
+          <Link href={`/problems/${problem.id}/log`}>
+            <Button variant="secondary">Log session</Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
