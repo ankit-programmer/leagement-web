@@ -26,6 +26,9 @@ export interface DeckCounts {
   learning: number;
   due: number;
   total: number;
+  /** Practice-type decks only; optional until the API deploy that computes them (deploy skew). */
+  problemsDue?: number;
+  problemsTotal?: number;
 }
 
 export interface Deck {
@@ -33,6 +36,8 @@ export interface Deck {
   userId: string;
   name: string;
   description: string | null;
+  /** 'flashcards' (usual) or 'practice'; optional on older API deploys. */
+  type?: "flashcards" | "practice";
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

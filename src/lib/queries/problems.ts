@@ -17,6 +17,7 @@ export type ErrorClass =
 
 export interface Problem {
   id: string;
+  deckId: string | null;
   name: string;
   url: string | null;
   description: string | null;
@@ -67,10 +68,14 @@ export interface ProblemStats {
 
 export type Suggestions = Record<ProblemResult, { nextDue: string; suggestRetire: boolean }>;
 
-export function useProblems(status?: "active" | "retired") {
+export function useProblems(options: { status?: "active" | "retired"; deckId?: string } = {}) {
+  const params = new URLSearchParams();
+  if (options.status) params.set("status", options.status);
+  if (options.deckId) params.set("deckId", options.deckId);
+  const qs = params.toString();
   return useQuery({
-    queryKey: ["problems", "list", status ?? "all"],
-    queryFn: async () => (await api<ProblemListRow[]>(`/problems${status ? `?status=${status}` : ""}`)).data,
+    queryKey: ["problems", "list", options.status ?? "all", options.deckId ?? "all"],
+    queryFn: async () => (await api<ProblemListRow[]>(`/problems${qs ? `?${qs}` : ""}`)).data,
   });
 }
 
@@ -81,10 +86,10 @@ export function useProblem(id: string) {
   });
 }
 
-export function useProblemStats() {
+export function useProblemStats(deckId?: string) {
   return useQuery({
-    queryKey: ["problems", "stats"],
-    queryFn: async () => (await api<ProblemStats>("/problems/stats")).data,
+    queryKey: ["problems", "stats", deckId ?? "all"],
+    queryFn: async () => (await api<ProblemStats>(`/problems/stats${deckId ? `?deckId=${deckId}` : ""}`)).data,
   });
 }
 
@@ -101,11 +106,18 @@ export function useSuggestions(id: string, enabled: boolean) {
 export function useCreateProblem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; url?: string; description?: string; pattern?: string; difficulty?: string }) =>
-      (await api<Problem>("/problems", { method: "POST", body: input })).data,
+    mutationFn: async (input: {
+      name: string;
+      url?: string;
+      description?: string;
+      pattern?: string;
+      difficulty?: string;
+      deckId?: string;
+    }) => (await api<Problem>("/problems", { method: "POST", body: input })).data,
     onSuccess: () => {
       track("problem_added");
       queryClient.invalidateQueries({ queryKey: ["problems"] });
+      queryClient.invalidateQueries({ queryKey: ["decks"] }); // practice deck counts
     },
   });
 }
@@ -157,6 +169,7 @@ export function useLogAttempt(problemId: string) {
     onSuccess: (_data, input) => {
       track("practice_session_logged", { result: input.result, errorClass: input.errorClass ?? "none" });
       queryClient.invalidateQueries({ queryKey: ["problems"] });
+      queryClient.invalidateQueries({ queryKey: ["decks"] }); // practice deck counts
     },
   });
 }

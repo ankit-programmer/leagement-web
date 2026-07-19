@@ -22,10 +22,10 @@ export function useDeck(deckId: string) {
 export function useCreateDeck() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; description?: string }) =>
+    mutationFn: async (input: { name: string; description?: string; type?: "flashcards" | "practice" }) =>
       (await api<Deck>("/decks", { method: "POST", body: input })).data,
-    onSuccess: () => {
-      track("deck_created");
+    onSuccess: (deck) => {
+      track("deck_created", { type: deck.type ?? "flashcards" });
       queryClient.invalidateQueries({ queryKey: ["decks"] });
     },
   });

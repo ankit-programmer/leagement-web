@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useState } from "react";
 import { CardEditor } from "@/components/cards/CardEditor";
+import { ProblemsView } from "@/components/problems/ProblemsView";
 import { DeckFormDialog } from "@/components/decks/DeckFormDialog";
 import { DeleteDeckDialog } from "@/components/decks/DeleteDeckDialog";
 import { GenerateDialog } from "@/components/generation/GenerateDialog";
@@ -156,6 +157,62 @@ export default function DeckPage() {
   const allCards = cardsQuery.data?.pages.flatMap((page) => page.data) ?? [];
   // Server-computed and quota-aware — must promise exactly what the session serves.
   const dueNow = counts ? counts.due + counts.learning + counts.newAvailable : 0;
+
+  // Practice-type decks hold problems, not cards — a completely different surface.
+  // (Branch sits after every hook call: rules of hooks.)
+  if (deck?.type === "practice") {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-badge text-lg font-bold text-white shadow-soft"
+                  style={{ background: deckGradient(deck.id) }}
+                >
+                  {(deck.name.trim()[0] ?? "?").toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <h1 className="flex items-center gap-2 truncate text-2xl font-bold tracking-[-0.025em]">
+                    {deck.name} <Pill tone="brand">practice</Pill>
+                  </h1>
+                  {deck.description ? (
+                    <p className="mt-0.5 truncate text-sm text-ink-muted">{deck.description}</p>
+                  ) : null}
+                </div>
+              </div>
+              <OverflowMenu
+                label="Deck actions"
+                items={[
+                  { label: "Edit deck", icon: <PencilSquareIcon className="h-4 w-4" />, onSelect: () => setEditDeckOpen(true) },
+                  { label: "Delete deck", icon: <TrashIcon className="h-4 w-4" />, danger: true, onSelect: () => setDeleteDeckOpen(true) },
+                ]}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <ProblemsView deckId={deck.id} />
+
+        <DeckFormDialog
+          open={editDeckOpen}
+          onOpenChange={setEditDeckOpen}
+          deck={deck}
+          busy={updateDeck.isPending}
+          onSubmit={(input) => updateDeck.mutate(input, { onSuccess: () => setEditDeckOpen(false) })}
+        />
+        <DeleteDeckDialog
+          deck={deck}
+          open={deleteDeckOpen}
+          onOpenChange={setDeleteDeckOpen}
+          busy={deleteDeck.isPending}
+          onConfirm={() => deleteDeck.mutate(deckId, { onSuccess: () => router.push("/") })}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

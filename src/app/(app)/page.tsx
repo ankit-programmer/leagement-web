@@ -152,7 +152,8 @@ export default function DashboardPage() {
           }`}
         >
           {decks.map((deck) => {
-            const dueNow = deck.counts.due + deck.counts.learning;
+            const isPractice = deck.type === "practice";
+            const dueNow = isPractice ? (deck.counts.problemsDue ?? 0) : deck.counts.due + deck.counts.learning;
             return (
               <Link key={deck.id} href={`/decks/${deck.id}`} className="group">
                 <Card lift className="h-full">
@@ -164,19 +165,36 @@ export default function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <h2 className="truncate font-bold tracking-[-0.01em]">{deck.name}</h2>
                         <p className="truncate text-sm text-ink-muted">
-                          {deck.description || `${deck.counts.total} cards`}
+                          {deck.description ||
+                            (isPractice
+                              ? `${deck.counts.problemsTotal ?? 0} practice problems`
+                              : `${deck.counts.total} cards`)}
                         </p>
                       </div>
                     </div>
                     <div className="mt-auto flex flex-wrap items-center justify-between gap-1.5 pt-4">
                       <div className="flex flex-wrap gap-1.5">
+                        {isPractice ? <Pill tone="neutral">practice</Pill> : null}
                         {dueNow > 0 ? <Pill tone="brand">{dueNow} due</Pill> : null}
-                        {deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
-                        {dueNow === 0 && deck.counts.new === 0 ? (
+                        {!isPractice && deck.counts.new > 0 ? <Pill tone="success">{deck.counts.new} new</Pill> : null}
+                        {dueNow === 0 && (isPractice || deck.counts.new === 0) ? (
                           <Pill tone="neutral">All caught up</Pill>
                         ) : null}
                       </div>
-                      {dueNow > 0 || deck.counts.newAvailable > 0 ? (
+                      {isPractice ? (
+                        dueNow > 0 ? (
+                          <Button
+                            className="!px-3 !py-1.5 text-xs"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              router.push(`/decks/${deck.id}`);
+                            }}
+                          >
+                            <PlayIcon className="h-3.5 w-3.5" /> Practice
+                          </Button>
+                        ) : null
+                      ) : dueNow > 0 || deck.counts.newAvailable > 0 ? (
                         // Straight into the session without opening the deck —
                         // browsing card fronts first is pre-exposure before retrieval.
                         <Button
@@ -214,7 +232,15 @@ export default function DashboardPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         busy={createDeck.isPending}
-        onSubmit={(input) => createDeck.mutate(input, { onSuccess: () => setDialogOpen(false) })}
+        onSubmit={(input) =>
+          createDeck.mutate(input, {
+            onSuccess: (created) => {
+              setDialogOpen(false);
+              // A practice deck opens straight into its problems flow.
+              if (created.type === "practice") router.push(`/decks/${created.id}`);
+            },
+          })
+        }
       />
     </div>
   );
