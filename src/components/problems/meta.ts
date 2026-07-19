@@ -50,6 +50,13 @@ export const ERROR_CLASS_META: Record<ErrorClass, { label: string; hint: string;
   other: { label: "Other", hint: "", fix: "" },
 };
 
+/** Difficulty at a glance — the standard LeetCode color language. */
+export const DIFFICULTY_TONE: Record<"easy" | "medium" | "hard", "success" | "warning" | "danger"> = {
+  easy: "success",
+  medium: "warning",
+  hard: "danger",
+};
+
 export const TIME_PHASES = [
   { key: "timeUnderstand", label: "Understand" },
   { key: "timeClassify", label: "Classify" },

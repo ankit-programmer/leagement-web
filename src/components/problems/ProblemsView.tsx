@@ -4,7 +4,7 @@ import { ArrowTopRightOnSquareIcon, PlayIcon, PlusIcon, PuzzlePieceIcon } from "
 import Link from "next/link";
 import { useState } from "react";
 import { useActiveAttempt } from "@/components/problems/attempt-timer";
-import { ERROR_CLASS_META, RESULT_META, dueLabel } from "@/components/problems/meta";
+import { DIFFICULTY_TONE, ERROR_CLASS_META, RESULT_META, dueLabel } from "@/components/problems/meta";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -88,7 +88,7 @@ function ProblemRow({ problem, attemptRunning }: { problem: ProblemListRow; atte
         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
           {attemptRunning ? <Pill tone="warning">⏱ attempt running</Pill> : null}
           {problem.pattern ? <Pill>{problem.pattern}</Pill> : null}
-          {problem.difficulty ? <span>{problem.difficulty}</span> : null}
+          {problem.difficulty ? <Pill tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Pill> : null}
           <span>
             {problem.attemptCount} session{problem.attemptCount === 1 ? "" : "s"}
           </span>
@@ -100,15 +100,16 @@ function ProblemRow({ problem, attemptRunning }: { problem: ProblemListRow; atte
           <span className={due.overdue ? "font-semibold text-danger" : ""}>{due.text}</span>
         </p>
       </div>
-      <div className="flex gap-1.5">
+      <div className="flex items-center gap-2.5">
+        <Link
+          href={`/problems/${problem.id}/log`}
+          className="text-xs font-semibold text-ink-faint transition-colors hover:text-ink"
+        >
+          Log
+        </Link>
         <Link href={`/problems/${problem.id}/attempt`}>
           <Button className="!px-3 !py-1.5 text-xs">
             <PlayIcon className="h-3.5 w-3.5" /> {attemptRunning ? "Resume" : "Start"}
-          </Button>
-        </Link>
-        <Link href={`/problems/${problem.id}/log`}>
-          <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
-            Log
           </Button>
         </Link>
       </div>
@@ -122,6 +123,7 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
   const { data: stats } = useProblemStats(deckId);
   const { attempt } = useActiveAttempt();
   const [showRetired, setShowRetired] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -173,31 +175,25 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
         </div>
       ) : null}
 
-      <Card>
-        <CardContent>
-          <h2 className="font-bold tracking-[-0.01em]">Add a problem</h2>
-          <div className="mt-3">
-            <AddProblemForm deckId={deckId} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent>
-          <h2 className="font-bold tracking-[-0.01em]">
-            Due today {dueList.length > 0 ? <span className="font-mono text-brand">({dueList.length})</span> : null}
-          </h2>
-          {dueList.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-faint">Nothing due — add a problem or pull one forward from the list below.</p>
-          ) : (
-            <div className="mt-2">
-              {dueList.map((problem) => (
-                <ProblemRow key={problem.id} problem={problem} attemptRunning={attempt?.problemId === problem.id} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Today's work first; adding problems is a curation task, not the daily loop. */}
+      {problems.length > 0 ? (
+        <Card>
+          <CardContent>
+            <h2 className="font-bold tracking-[-0.01em]">
+              Due today {dueList.length > 0 ? <span className="font-mono text-brand">({dueList.length})</span> : null}
+            </h2>
+            {dueList.length === 0 ? (
+              <p className="mt-2 text-sm text-ink-faint">Nothing due — add a problem or pull one forward from the list below.</p>
+            ) : (
+              <div className="mt-2">
+                {dueList.map((problem) => (
+                  <ProblemRow key={problem.id} problem={problem} attemptRunning={attempt?.problemId === problem.id} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {upcoming.length > 0 ? (
         <Card>
@@ -211,6 +207,27 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card>
+        <CardContent>
+          {addOpen || problems.length === 0 ? (
+            <>
+              <h2 className="font-bold tracking-[-0.01em]">Add a problem</h2>
+              <div className="mt-3">
+                <AddProblemForm deckId={deckId} />
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="flex w-full items-center gap-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
+            >
+              <PlusIcon className="h-4 w-4" /> Add a problem
+            </button>
+          )}
+        </CardContent>
+      </Card>
 
       {retired.length > 0 ? (
         <Card>

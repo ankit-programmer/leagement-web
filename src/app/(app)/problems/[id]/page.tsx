@@ -1,18 +1,28 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon, PlayIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon, PlayIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ERROR_CLASS_META, RESULT_META, TIME_PHASES, dueLabel, fromDateInput, toDateInput } from "@/components/problems/meta";
+import {
+  DIFFICULTY_TONE,
+  ERROR_CLASS_META,
+  RESULT_META,
+  TIME_PHASES,
+  dueLabel,
+  fromDateInput,
+  toDateInput,
+} from "@/components/problems/meta";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { Pill } from "@/components/ui/Pill";
 import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { type Attempt, useProblem, useUpdateProblem } from "@/lib/queries/problems";
+import { type Attempt, useDeleteProblem, useProblem, useUpdateProblem } from "@/lib/queries/problems";
 
 const dateFmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" });
 
@@ -90,10 +100,13 @@ function AttemptCard({ attempt }: { attempt: Attempt }) {
 
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: problem, isLoading, isError, error, refetch } = useProblem(id);
   const updateProblem = useUpdateProblem(id);
+  const deleteProblem = useDeleteProblem();
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -110,8 +123,11 @@ export default function ProblemDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/problems" className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink">
-        <ArrowLeftIcon className="h-4 w-4" /> All problems
+      <Link
+        href={problem.deckId ? `/decks/${problem.deckId}` : "/problems"}
+        className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink"
+      >
+        <ArrowLeftIcon className="h-4 w-4" /> {problem.deckId ? "Back to deck" : "All problems"}
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -126,7 +142,7 @@ export default function ProblemDetailPage() {
           </h1>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
             {problem.pattern ? <Pill>{problem.pattern}</Pill> : null}
-            {problem.difficulty ? <span>{problem.difficulty}</span> : null}
+            {problem.difficulty ? <Pill tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Pill> : null}
             {problem.status === "retired" ? (
               <Pill tone="success">retired</Pill>
             ) : (
@@ -134,7 +150,7 @@ export default function ProblemDetailPage() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Link href={`/problems/${problem.id}/attempt`}>
             <Button>
               <PlayIcon className="h-4 w-4" /> Start attempt
@@ -143,6 +159,17 @@ export default function ProblemDetailPage() {
           <Link href={`/problems/${problem.id}/log`}>
             <Button variant="secondary">Log session</Button>
           </Link>
+          <OverflowMenu
+            label="Problem actions"
+            items={[
+              {
+                label: "Delete problem",
+                icon: <TrashIcon className="h-4 w-4" />,
+                danger: true,
+                onSelect: () => setDeleteOpen(true),
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -228,6 +255,20 @@ export default function ProblemDetailPage() {
           problem.attempts.map((attempt) => <AttemptCard key={attempt.id} attempt={attempt} />)
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete this problem?"
+        description="It disappears from every list; the session history is kept in your data."
+        confirmLabel="Delete problem"
+        busy={deleteProblem.isPending}
+        onConfirm={() =>
+          deleteProblem.mutate(problem.id, {
+            onSuccess: () => router.push(problem.deckId ? `/decks/${problem.deckId}` : "/problems"),
+          })
+        }
+      />
     </div>
   );
 }
