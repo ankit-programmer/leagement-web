@@ -263,11 +263,13 @@ export default function LogSessionPage() {
 
           {result && clean ? (
             <Step n={4} title="Sharpen the win" hint="Wins carry data too — especially calibration data.">
-              <Input
-                label="One thing to do faster next time (optional)"
+              <Textarea
+                label="Notes — what worked, what to do faster, anything to remember (optional, markdown)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. recognized the pattern late — say the trigger out loud sooner"
+                placeholder={"e.g. recognized the pattern late — say the trigger out loud sooner\nkey insight: the monotonic-stack invariant is what made it click"}
+                className="min-h-24"
+                maxLength={20_000}
               />
             </Step>
           ) : result ? (
