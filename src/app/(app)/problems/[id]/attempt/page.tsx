@@ -238,7 +238,7 @@ export default function AttemptPage() {
       {problem.description ? (
         <section className="rounded-card border border-hairline bg-surface-subtle/60 p-4">
           <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Description / SPEC</h3>
-          <div className="prose-sm mt-2 max-w-none text-sm">
+          <div className="mt-2 max-w-none text-sm">
             <Markdown>{problem.description}</Markdown>
           </div>
         </section>

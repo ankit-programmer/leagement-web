@@ -432,7 +432,7 @@ export default function LogSessionPage() {
                 </div>
               </div>
             ) : (
-              <div className="prose-sm mt-2 max-h-80 max-w-none overflow-y-auto text-sm">
+              <div className="mt-2 max-h-80 max-w-none overflow-y-auto text-sm">
                 <Markdown>{problem.description}</Markdown>
               </div>
             )}

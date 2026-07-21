@@ -136,7 +136,7 @@ export function EditableMarkdownSection({
           {renderValue ? (
             renderValue(value)
           ) : (
-            <div className={`prose-sm max-w-none ${compact ? "max-h-80 overflow-y-auto text-xs" : "text-sm"}`}>
+            <div className={`max-w-none ${compact ? "max-h-80 overflow-y-auto text-xs" : "text-sm"}`}>
               <Markdown>{value}</Markdown>
             </div>
           )}

@@ -89,7 +89,7 @@ function AttemptCard({ attempt }: { attempt: Attempt }) {
           </div>
         ) : null}
         {attempt.notes ? (
-          <div className="prose-sm max-w-none border-t border-hairline/60 pt-2 text-sm">
+          <div className="max-w-none border-t border-hairline/60 pt-2 text-sm">
             <Markdown>{attempt.notes}</Markdown>
           </div>
         ) : null}
