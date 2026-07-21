@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { clearFinishedAttempt, takeFinishedAttempt } from "@/components/problems/attempt-timer";
+import { EditableMarkdownSection, ResourceLinks } from "@/components/problems/EditableMarkdownSection";
 import {
   ERROR_CLASS_META,
   RESULT_META,
@@ -436,6 +437,29 @@ export default function LogSessionPage() {
               </div>
             )}
           </section>
+
+          <section className="rounded-card border border-hairline bg-surface-subtle/60 p-4">
+            <EditableMarkdownSection
+              problemId={problem.id}
+              field="solution"
+              title="Optimal solution"
+              value={problem.solution}
+              placeholder={"```js\n// the optimal approach\n```\nWhy it works, complexity, the key invariant…"}
+              emptyHint="Save the optimal solution here after studying it — revealing it now is fair, the session is over."
+              spoiler
+              spoilerCaption="fair game now"
+              compact
+            />
+          </section>
+
+          {problem.resources ? (
+            <section className="rounded-card border border-hairline bg-surface-subtle/60 p-4">
+              <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Resources</h3>
+              <div className="mt-2">
+                <ResourceLinks text={problem.resources} compact />
+              </div>
+            </section>
+          ) : null}
 
           {lastAttempt ? (
             <section className="rounded-card border border-hairline bg-surface-subtle/60 p-4">

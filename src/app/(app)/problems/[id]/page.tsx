@@ -13,10 +13,10 @@ import {
   fromDateInput,
   toDateInput,
 } from "@/components/problems/meta";
+import { EditableMarkdownSection, ResourceLinks } from "@/components/problems/EditableMarkdownSection";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Textarea } from "@/components/ui/Field";
 import { Markdown } from "@/components/ui/Markdown";
 import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { Pill } from "@/components/ui/Pill";
@@ -104,8 +104,6 @@ export default function ProblemDetailPage() {
   const { data: problem, isLoading, isError, error, refetch } = useProblem(id);
   const updateProblem = useUpdateProblem(id);
   const deleteProblem = useDeleteProblem();
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [descDraft, setDescDraft] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
@@ -174,53 +172,44 @@ export default function ProblemDetailPage() {
       </div>
 
       <Card>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold tracking-[-0.01em]">Description / SPEC</h2>
-            {!editingDesc ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setDescDraft(problem.description ?? "");
-                  setEditingDesc(true);
-                }}
-                className="text-sm font-semibold text-ink-muted hover:text-ink"
-              >
-                {problem.description ? "Edit" : "Add"}
-              </button>
-            ) : null}
-          </div>
-          {editingDesc ? (
-            <div className="space-y-2">
-              <Textarea
-                value={descDraft}
-                onChange={(e) => setDescDraft(e.target.value)}
-                placeholder={"Paste the statement or your SPEC block:\nIN: …\nOUT: …\nEDGE: …\nEX: …"}
-                className="min-h-40"
-                maxLength={20_000}
-              />
-              <div className="flex gap-2">
-                <Button
-                  busy={updateProblem.isPending}
-                  busyLabel="Saving…"
-                  onClick={() => updateProblem.mutate({ description: descDraft.trim() || null }, { onSuccess: () => setEditingDesc(false) })}
-                >
-                  Save
-                </Button>
-                <Button variant="secondary" onClick={() => setEditingDesc(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : problem.description ? (
-            <div className="prose-sm max-w-none text-sm">
-              <Markdown>{problem.description}</Markdown>
-            </div>
-          ) : (
-            <p className="text-sm text-ink-faint">
-              No description yet — paste the statement or your SPEC block (IN / OUT / EDGE / EX). It stays visible while you write post-mortems.
-            </p>
-          )}
+        <CardContent>
+          <EditableMarkdownSection
+            problemId={problem.id}
+            field="description"
+            title="Description / SPEC"
+            value={problem.description}
+            placeholder={"Paste the statement or your SPEC block:\nIN: …\nOUT: …\nEDGE: …\nEX: …"}
+            emptyHint="No description yet — paste the statement or your SPEC block (IN / OUT / EDGE / EX). It stays visible while you write post-mortems."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <EditableMarkdownSection
+            problemId={problem.id}
+            field="solution"
+            title="Optimal solution"
+            value={problem.solution}
+            placeholder={"```js\n// the optimal approach\n```\nWhy it works, complexity, the key invariant…"}
+            emptyHint="No solution saved — add it after a session so future-you can check against it (it stays hidden behind a click)."
+            spoiler
+            spoilerCaption="hidden so a scheduled re-solve stays honest"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <EditableMarkdownSection
+            problemId={problem.id}
+            field="resources"
+            title="Resources"
+            value={problem.resources}
+            placeholder={"One per line — a label before the link is optional:\nNeetCode video https://youtube.com/watch?v=…\nhttps://blog.example.com/great-post"}
+            emptyHint="No resources yet — drop in the blog posts and videos that explain this one well."
+            renderValue={(value) => <ResourceLinks text={value} />}
+          />
         </CardContent>
       </Card>
 

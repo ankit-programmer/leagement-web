@@ -76,6 +76,33 @@ export function fromDateInput(value: string): string {
   return new Date(`${value}T12:00:00`).toISOString();
 }
 
+/** "Label https://url" or bare-URL lines → outbound link rows. URL-less lines render as plain text. */
+export function parseResources(text: string): Array<{ label: string; url: string | null }> {
+  const rows: Array<{ label: string; url: string | null }> = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(/https?:\/\/\S+/);
+    if (!match) {
+      rows.push({ label: trimmed, url: null });
+      continue;
+    }
+    const url = match[0];
+    const label =
+      trimmed.replace(url, "").replace(/[\s\-–—|:]+$/, "").replace(/^[\s\-–—|:]+/, "").trim() || hostnameOf(url);
+    rows.push({ label, url });
+  }
+  return rows;
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 export function dueLabel(nextDue: string): { text: string; overdue: boolean } {
   const days = Math.ceil((new Date(nextDue).getTime() - Date.now()) / 86_400_000);
   if (days <= 0) return { text: "due today", overdue: true };

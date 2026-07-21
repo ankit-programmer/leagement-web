@@ -21,6 +21,8 @@ export interface Problem {
   name: string;
   url: string | null;
   description: string | null;
+  solution: string | null;
+  resources: string | null;
   pattern: string | null;
   difficulty: "easy" | "medium" | "hard" | null;
   status: "active" | "retired";
@@ -128,7 +130,9 @@ export function useUpdateProblem(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (
-      patch: Partial<Pick<Problem, "name" | "url" | "description" | "pattern" | "difficulty" | "status" | "nextDue">>,
+      patch: Partial<
+        Pick<Problem, "name" | "url" | "description" | "solution" | "resources" | "pattern" | "difficulty" | "status" | "nextDue">
+      >,
     ) => (await api<Problem>(`/problems/${id}`, { method: "PATCH", body: patch })).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["problems"] }),
   });
