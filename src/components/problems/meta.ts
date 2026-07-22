@@ -103,9 +103,19 @@ function hostnameOf(url: string): string {
   }
 }
 
-export function dueLabel(nextDue: string): { text: string; overdue: boolean } {
-  const days = Math.ceil((new Date(nextDue).getTime() - Date.now()) / 86_400_000);
-  if (days <= 0) return { text: "due today", overdue: true };
+/** Learning-day ordinal with the 4am-style rollover, in the browser's zone
+ *  (assumed = the user's zone). MUST bucket by day like the server does —
+ *  comparing raw timestamps made a problem stamped for noon look "due
+ *  tomorrow" all morning while the server counted it due today. */
+function learningDayKey(date: Date, dayStartHour: number): number {
+  const shifted = new Date(date.getTime() - dayStartHour * 3_600_000);
+  return Math.floor(new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate()).getTime() / 86_400_000);
+}
+
+export function dueLabel(nextDue: string, dayStartHour = 4): { text: string; overdue: boolean } {
+  const days = learningDayKey(new Date(nextDue), dayStartHour) - learningDayKey(new Date(), dayStartHour);
+  if (days < 0) return { text: `overdue ${-days}d`, overdue: true };
+  if (days === 0) return { text: "due today", overdue: true };
   if (days === 1) return { text: "due tomorrow", overdue: false };
   return { text: `due in ${days}d`, overdue: false };
 }
