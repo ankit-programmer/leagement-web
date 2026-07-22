@@ -155,6 +155,24 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Add stays at the top so it's one reach away however long the list grows. */}
+      <div className="flex justify-end">
+        <Button variant={addOpen ? "secondary" : "primary"} onClick={() => setAddOpen((o) => !o)}>
+          <PlusIcon className="h-4 w-4" /> {addOpen ? "Close" : "Add problem"}
+        </Button>
+      </div>
+
+      {addOpen || problems.length === 0 ? (
+        <Card>
+          <CardContent>
+            <h2 className="font-bold tracking-[-0.01em]">Add a problem</h2>
+            <div className="mt-3">
+              <AddProblemForm deckId={deckId} />
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {stats ? (
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
@@ -219,27 +237,6 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
           </CardContent>
         </Card>
       ) : null}
-
-      <Card>
-        <CardContent>
-          {addOpen || problems.length === 0 ? (
-            <>
-              <h2 className="font-bold tracking-[-0.01em]">Add a problem</h2>
-              <div className="mt-3">
-                <AddProblemForm deckId={deckId} />
-              </div>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="flex w-full items-center gap-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
-            >
-              <PlusIcon className="h-4 w-4" /> Add a problem
-            </button>
-          )}
-        </CardContent>
-      </Card>
 
       {retired.length > 0 ? (
         <Card>
