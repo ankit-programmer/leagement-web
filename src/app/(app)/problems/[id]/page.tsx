@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon, PlayIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon, PencilSquareIcon, PlayIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,6 +13,7 @@ import {
   fromDateInput,
   toDateInput,
 } from "@/components/problems/meta";
+import { EditProblemDialog } from "@/components/problems/EditProblemDialog";
 import { EditableMarkdownSection, ResourceLinks } from "@/components/problems/EditableMarkdownSection";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -105,6 +106,7 @@ export default function ProblemDetailPage() {
   const updateProblem = useUpdateProblem(id);
   const deleteProblem = useDeleteProblem();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -160,6 +162,11 @@ export default function ProblemDetailPage() {
           <OverflowMenu
             label="Problem actions"
             items={[
+              {
+                label: "Edit problem",
+                icon: <PencilSquareIcon className="h-4 w-4" />,
+                onSelect: () => setEditOpen(true),
+              },
               {
                 label: "Delete problem",
                 icon: <TrashIcon className="h-4 w-4" />,
@@ -244,6 +251,8 @@ export default function ProblemDetailPage() {
           problem.attempts.map((attempt) => <AttemptCard key={attempt.id} attempt={attempt} />)
         )}
       </div>
+
+      <EditProblemDialog problem={problem} open={editOpen} onOpenChange={setEditOpen} />
 
       <ConfirmDialog
         open={deleteOpen}
