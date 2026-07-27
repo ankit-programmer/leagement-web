@@ -64,8 +64,13 @@ export interface ProblemStats {
   dueToday: number;
   activeProblems: number;
   practicedDaysLast7: number;
+  /** Optional until the API deploy that computes them (deploy skew). */
+  practiceStreak?: number;
   solveRate30d: number | null;
   errorClasses30d: Array<{ errorClass: ErrorClass; count: number }>;
+  attemptsByDay?: Array<{ date: string; total: number; solved: number }>;
+  totalSessions?: number;
+  retiredProblems?: number;
 }
 
 export type Suggestions = Record<ProblemResult, { nextDue: string; suggestRetire: boolean }>;

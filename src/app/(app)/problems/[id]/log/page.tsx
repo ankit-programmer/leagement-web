@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { clearFinishedAttempt, takeFinishedAttempt } from "@/components/problems/attempt-timer";
 import { EditableMarkdownSection, ResourceLinks } from "@/components/problems/EditableMarkdownSection";
+import { MiniDayPicker } from "@/components/problems/PracticeCharts";
 import {
   ERROR_CLASS_META,
   RESULT_META,
@@ -24,6 +25,7 @@ import {
   type ProblemResult,
   useLogAttempt,
   useProblem,
+  useProblems,
   useSuggestions,
   useUpdateProblem,
 } from "@/lib/queries/problems";
@@ -64,6 +66,8 @@ export default function LogSessionPage() {
   const router = useRouter();
   const { data: problem, isLoading, isError, error, refetch } = useProblem(id);
   const { data: suggestions } = useSuggestions(id, true);
+  // For the schedule step's per-day load strip — global, since capacity is per-day, not per-deck.
+  const { data: allProblems } = useProblems({});
   const logAttempt = useLogAttempt(id);
   const updateProblem = useUpdateProblem(id);
 
@@ -360,6 +364,16 @@ export default function LogSessionPage() {
                     </label>
                   ) : null}
                 </div>
+                {allProblems ? (
+                  <MiniDayPicker
+                    problems={allProblems}
+                    value={nextDue}
+                    onPick={(picked) => {
+                      setNextDue(picked);
+                      setDateTouched(true);
+                    }}
+                  />
+                ) : null}
               </Step>
 
               {!clean ? (

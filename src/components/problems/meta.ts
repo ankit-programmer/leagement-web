@@ -107,7 +107,7 @@ function hostnameOf(url: string): string {
  *  (assumed = the user's zone). MUST bucket by day like the server does —
  *  comparing raw timestamps made a problem stamped for noon look "due
  *  tomorrow" all morning while the server counted it due today. */
-function learningDayKey(date: Date, dayStartHour: number): number {
+export function learningDayKey(date: Date, dayStartHour = 4): number {
   const shifted = new Date(date.getTime() - dayStartHour * 3_600_000);
   return Math.floor(new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate()).getTime() / 86_400_000);
 }

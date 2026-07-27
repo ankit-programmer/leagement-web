@@ -4,7 +4,8 @@ import { ArrowTopRightOnSquareIcon, PlayIcon, PlusIcon, PuzzlePieceIcon } from "
 import Link from "next/link";
 import { useState } from "react";
 import { useActiveAttempt } from "@/components/problems/attempt-timer";
-import { DIFFICULTY_TONE, ERROR_CLASS_META, RESULT_META, dueLabel, fromDateInput } from "@/components/problems/meta";
+import { DIFFICULTY_TONE, ERROR_CLASS_META, RESULT_META, dueLabel, fromDateInput, learningDayKey } from "@/components/problems/meta";
+import { ActivityChart, UpcomingLoadChart } from "@/components/problems/PracticeCharts";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,7 +15,7 @@ import { QueryError } from "@/components/ui/QueryError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { type ProblemListRow, useCreateProblem, useProblemStats, useProblems } from "@/lib/queries/problems";
 
-function AddProblemForm({ deckId }: { deckId?: string }) {
+function AddProblemForm({ deckId, allProblems }: { deckId?: string; allProblems?: ProblemListRow[] }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [pattern, setPattern] = useState("");
@@ -76,6 +77,14 @@ function AddProblemForm({ deckId }: { deckId?: string }) {
       </Button>
       <p className="text-xs text-ink-faint sm:col-span-4">
         Date is the FIRST practice day — leave empty for today. It sticks between adds, so you can file a whole batch onto a future day.
+        {firstDue && allProblems ? (
+          <span className="ml-1 font-semibold text-ink-muted">
+            {allProblems.filter(
+              (p) => p.status === "active" && learningDayKey(new Date(p.nextDue)) === learningDayKey(new Date(`${firstDue}T12:00:00`)),
+            ).length}{" "}
+            already scheduled that day (all decks).
+          </span>
+        ) : null}
       </p>
       {error ? <p className="sm:col-span-4 rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger-ink">{error}</p> : null}
     </form>
@@ -133,6 +142,8 @@ function ProblemRow({ problem, attemptRunning }: { problem: ProblemListRow; atte
 export function ProblemsView({ deckId }: { deckId?: string }) {
   const { data: problems, isLoading, isError, error, refetch } = useProblems({ deckId });
   const { data: stats } = useProblemStats(deckId);
+  // Schedule load is about YOUR day, not this deck's — always computed globally.
+  const { data: allProblems } = useProblems({});
   const { attempt } = useActiveAttempt();
   const [showRetired, setShowRetired] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -167,19 +178,22 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
           <CardContent>
             <h2 className="font-bold tracking-[-0.01em]">Add a problem</h2>
             <div className="mt-3">
-              <AddProblemForm deckId={deckId} />
+              <AddProblemForm deckId={deckId} allProblems={allProblems} />
             </div>
           </CardContent>
         </Card>
       ) : null}
 
       {stats ? (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Consistency</p>
-              <p className="mt-1 font-mono text-2xl font-bold tracking-[-0.02em]">{stats.practicedDaysLast7}/7</p>
-              <p className="mt-0.5 text-xs text-ink-faint">days practiced this week</p>
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Practice streak</p>
+              <p className="mt-1 font-mono text-2xl font-bold tracking-[-0.02em]">
+                🔥 {stats.practiceStreak ?? 0}
+                <span className="text-sm font-semibold text-ink-secondary"> day{(stats.practiceStreak ?? 0) === 1 ? "" : "s"}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-ink-faint">{stats.practicedDaysLast7}/7 days this week</p>
             </CardContent>
           </Card>
           <Card>
@@ -202,8 +216,32 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
               </p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-muted">Retired</p>
+              <p className="mt-1 font-mono text-2xl font-bold tracking-[-0.02em]">{stats.retiredProblems ?? 0}</p>
+              <p className="mt-0.5 text-xs text-ink-faint">{stats.totalSessions ?? 0} sessions logged</p>
+            </CardContent>
+          </Card>
         </div>
       ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {allProblems ? (
+          <Card>
+            <CardContent>
+              <UpcomingLoadChart problems={allProblems} />
+            </CardContent>
+          </Card>
+        ) : null}
+        {stats?.attemptsByDay && stats.attemptsByDay.length > 0 ? (
+          <Card>
+            <CardContent>
+              <ActivityChart data={stats.attemptsByDay} />
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
 
       {/* Today's work first; adding problems is a curation task, not the daily loop. */}
       {problems.length > 0 ? (
