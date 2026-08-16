@@ -3,7 +3,7 @@
 import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { clearFinishedAttempt, takeFinishedAttempt } from "@/components/problems/attempt-timer";
 import { EditableMarkdownSection, ResourceLinks } from "@/components/problems/EditableMarkdownSection";
 import { MiniDayPicker } from "@/components/problems/PracticeCharts";
@@ -120,6 +120,11 @@ export default function LogSessionPage() {
     return bestVal > 0 ? best : null;
   }, [phases]);
 
+  // One id per form mount: every click of Save is the SAME logical attempt, so
+  // the server's idempotency guard can actually catch double-submits. Lazily
+  // minted on first submit (crypto.randomUUID needs the browser).
+  const attemptIdRef = useRef<string | null>(null);
+
   const clean = result === CLEAN;
   const failed = result === "needed_editorial" || result === "wrong_approach";
   const overconfident = predicted === "pass" && failed;
@@ -138,6 +143,9 @@ export default function LogSessionPage() {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!result || !nextDue) return;
+    // Re-clicks while saving OR after success (navigation in flight) must not
+    // start a second logical attempt — the id below only dedupes same-id replays.
+    if (logAttempt.isPending || logAttempt.isSuccess) return;
     setFormError(null);
     if (failed && !errorClass) {
       setFormError("Pick the primary error — one class, the first domino. That's what makes the weekly tally work.");
@@ -147,9 +155,10 @@ export default function LogSessionPage() {
       const v = Number(phases[key]);
       return Number.isInteger(v) && v > 0 ? v : undefined;
     };
+    attemptIdRef.current ??= crypto.randomUUID();
     logAttempt.mutate(
       {
-        attemptId: crypto.randomUUID(),
+        attemptId: attemptIdRef.current,
         result,
         predicted: predicted ?? undefined,
         timeMinutes: totalMinutes > 0 ? totalMinutes : undefined,
@@ -392,7 +401,12 @@ export default function LogSessionPage() {
             <Button type="button" variant="secondary" disabled={logAttempt.isPending} onClick={() => router.push(`/problems/${id}`)}>
               Cancel
             </Button>
-            <Button type="submit" busy={logAttempt.isPending} busyLabel="Saving…" disabled={!result || !nextDue}>
+            <Button
+              type="submit"
+              busy={logAttempt.isPending || logAttempt.isSuccess}
+              busyLabel={logAttempt.isSuccess ? "Saved ✓" : "Saving…"}
+              disabled={!result || !nextDue}
+            >
               Save post-mortem
             </Button>
           </div>
