@@ -112,11 +112,24 @@ export function UpcomingLoadChart({ problems }: { problems: ProblemListRow[] }) 
   );
 }
 
-/** Sessions per day, last 30 days — solved-in-cap portion in green (watch it grow). */
+const RANGE_KEY = "leagement.sessionsRange";
+const RANGES = [30, 60, 90] as const;
+
+/** Sessions per day over a selectable 30/60/90-day range — solved-in-cap portion in green (watch it grow). */
 export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemptsByDay"]> }) {
+  const [range, setRange] = useState<number>(30);
+  useEffect(() => {
+    const raw = Number(window.localStorage.getItem(RANGE_KEY));
+    if (RANGES.includes(raw as (typeof RANGES)[number])) setRange(raw);
+  }, []);
+  const pickRange = (days: number) => {
+    setRange(days);
+    window.localStorage.setItem(RANGE_KEY, String(days));
+  };
+
   const byDate = new Map(data.map((d) => [d.date, d]));
   const series: Array<{ label: string; total: number; solved: number }> = [];
-  for (let i = 29; i >= 0; i--) {
+  for (let i = range - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * DAY_MS);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const row = byDate.get(key);
@@ -126,8 +139,28 @@ export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemp
 
   return (
     <div>
-      <h2 className="font-bold tracking-[-0.01em]">Sessions — last 30 days</h2>
-      <div className="mt-3 flex h-24 items-end gap-[2px]" role="img" aria-label="Practice sessions per day, last 30 days">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-bold tracking-[-0.01em]">Sessions</h2>
+        <div className="flex gap-1 text-xs">
+          {RANGES.map((days) => (
+            <button
+              key={days}
+              type="button"
+              onClick={() => pickRange(days)}
+              className={`rounded-chip px-2 py-0.5 font-mono font-bold transition-colors ${
+                range === days ? "bg-brand-tint text-brand-dark dark:text-brand-light" : "text-ink-faint hover:text-ink"
+              }`}
+            >
+              {days}d
+            </button>
+          ))}
+        </div>
+      </div>
+      <div
+        className={`mt-3 flex h-24 items-end ${range > 30 ? "gap-px" : "gap-[2px]"}`}
+        role="img"
+        aria-label={`Practice sessions per day, last ${range} days`}
+      >
         {series.map((day, i) => (
           <div key={i} className="group relative flex h-full flex-1 flex-col justify-end">
             <div
