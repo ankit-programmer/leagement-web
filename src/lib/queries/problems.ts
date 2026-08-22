@@ -69,6 +69,8 @@ export interface ProblemStats {
   solveRate30d: number | null;
   errorClasses30d: Array<{ errorClass: ErrorClass; count: number }>;
   attemptsByDay?: Array<{ date: string; total: number; solved: number }>;
+  /** Per-day context annotations ("200mg caffeine", "bad sleep") — optional until API deploy. */
+  dayNotes?: Array<{ date: string; note: string }>;
   totalSessions?: number;
   retiredProblems?: number;
 }
@@ -140,6 +142,16 @@ export function useUpdateProblem(id: string) {
       >,
     ) => (await api<Problem>(`/problems/${id}`, { method: "PATCH", body: patch })).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["problems"] }),
+  });
+}
+
+/** Upsert the context note for one learning day; empty note clears it. */
+export function useUpsertDayNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { date: string; note: string }) =>
+      (await api<{ date: string; note: string }>("/problems/day-note", { method: "PUT", body: input })).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["problems", "stats"] }),
   });
 }
 

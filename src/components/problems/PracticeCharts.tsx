@@ -2,7 +2,8 @@
 
 import { MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import type { ProblemListRow, ProblemStats } from "@/lib/queries/problems";
+import { type ProblemListRow, type ProblemStats, useUpsertDayNote } from "@/lib/queries/problems";
+import { Button } from "@/components/ui/Button";
 import { learningDayKey } from "./meta";
 
 const DAY_MS = 86_400_000;
@@ -115,8 +116,18 @@ export function UpcomingLoadChart({ problems }: { problems: ProblemListRow[] }) 
 const RANGE_KEY = "leagement.sessionsRange";
 const RANGES = [30, 60, 90] as const;
 
-/** Sessions per day over a selectable 30/60/90-day range — solved-in-cap portion in green (watch it grow). */
-export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemptsByDay"]> }) {
+/**
+ * Sessions per day over a selectable 30/60/90-day range — solved-in-cap portion
+ * in green. Days can carry a context note ("200mg caffeine", "bad sleep"):
+ * amber dot on the bar, text in the tooltip, click a day to add/edit.
+ */
+export function ActivityChart({
+  data,
+  notes = [],
+}: {
+  data: NonNullable<ProblemStats["attemptsByDay"]>;
+  notes?: NonNullable<ProblemStats["dayNotes"]>;
+}) {
   const [range, setRange] = useState<number>(30);
   useEffect(() => {
     const raw = Number(window.localStorage.getItem(RANGE_KEY));
@@ -127,15 +138,25 @@ export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemp
     window.localStorage.setItem(RANGE_KEY, String(days));
   };
 
+  const [editing, setEditing] = useState<{ date: string; label: string } | null>(null);
+  const [draft, setDraft] = useState("");
+  const saveNote = useUpsertDayNote();
+
   const byDate = new Map(data.map((d) => [d.date, d]));
-  const series: Array<{ label: string; total: number; solved: number }> = [];
+  const noteByDate = new Map(notes.map((n) => [n.date, n.note]));
+  const series: Array<{ date: string; label: string; total: number; solved: number; note?: string }> = [];
   for (let i = range - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * DAY_MS);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const row = byDate.get(key);
-    series.push({ label: key.slice(5), total: row?.total ?? 0, solved: row?.solved ?? 0 });
+    series.push({ date: key, label: key.slice(5), total: row?.total ?? 0, solved: row?.solved ?? 0, note: noteByDate.get(key) });
   }
   const max = Math.max(1, ...series.map((d) => d.total));
+
+  const openEditor = (day: { date: string; label: string; note?: string }) => {
+    setEditing({ date: day.date, label: day.label });
+    setDraft(day.note ?? "");
+  };
 
   return (
     <div>
@@ -161,8 +182,19 @@ export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemp
         role="img"
         aria-label={`Practice sessions per day, last ${range} days`}
       >
-        {series.map((day, i) => (
-          <div key={i} className="group relative flex h-full flex-1 flex-col justify-end">
+        {series.map((day) => (
+          <button
+            key={day.date}
+            type="button"
+            onClick={() => openEditor(day)}
+            aria-label={`${day.label}: ${day.total} sessions${day.note ? `, note: ${day.note}` : ""}. Click to edit note.`}
+            className={`group relative flex h-full flex-1 cursor-pointer flex-col justify-end rounded-t-[3px] ${
+              editing?.date === day.date ? "bg-brand-tint/60" : "hover:bg-surface-subtle"
+            }`}
+          >
+            {day.note ? (
+              <span className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-warning" aria-hidden />
+            ) : null}
             <div
               className="w-full rounded-t-[3px] bg-brand/50 transition-opacity group-hover:opacity-80"
               style={{ height: `${Math.round(((day.total - day.solved) / max) * 100)}%`, minHeight: day.total > day.solved ? 2 : 0 }}
@@ -175,17 +207,48 @@ export function ActivityChart({ data }: { data: NonNullable<ProblemStats["attemp
                 borderRadius: day.total === day.solved ? "3px 3px 0 0" : 0,
               }}
             />
-            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 font-mono text-[10px] text-page shadow-raised group-hover:block">
+            <div className="pointer-events-none absolute -top-7 left-1/2 z-10 hidden max-w-56 -translate-x-1/2 truncate whitespace-nowrap rounded-chip bg-ink px-2 py-0.5 font-mono text-[10px] text-page shadow-raised group-hover:block">
               {day.total} ({day.solved} solved) · {day.label}
+              {day.note ? <span className="text-warning"> · {day.note}</span> : null}
             </div>
-          </div>
+          </button>
         ))}
       </div>
       <div className="mt-1 flex justify-between border-t border-hairline pt-1 font-mono text-[10px] text-ink-faint">
         <span>{series[0]?.label}</span>
-        <span className="text-success-ink">■ solved in cap</span>
+        <span>
+          <span className="text-success-ink">■ solved in cap</span>
+          <span className="ml-2 text-warning">● has note</span>
+        </span>
         <span>{series.at(-1)?.label}</span>
       </div>
+      {editing ? (
+        <form
+          className="mt-2 flex items-center gap-2 rounded-field border border-hairline bg-surface-subtle p-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveNote.mutate({ date: editing.date, note: draft }, { onSuccess: () => setEditing(null) });
+          }}
+        >
+          <span className="shrink-0 font-mono text-xs font-bold text-ink-secondary">{editing.label}</span>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={500}
+            placeholder="Context for this day — caffeine, sleep, work pressure…"
+            className="min-w-0 flex-1 rounded-field border border-hairline bg-surface px-2 py-1 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+          />
+          <Button type="submit" busy={saveNote.isPending} busyLabel="Saving…">
+            Save
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <p className="mt-1 text-xs text-ink-faint">Tap a day to note its context (caffeine, sleep, workload).</p>
+      )}
     </div>
   );
 }

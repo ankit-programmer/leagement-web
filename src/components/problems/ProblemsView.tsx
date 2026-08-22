@@ -237,7 +237,7 @@ export function ProblemsView({ deckId }: { deckId?: string }) {
         {stats?.attemptsByDay && stats.attemptsByDay.length > 0 ? (
           <Card>
             <CardContent>
-              <ActivityChart data={stats.attemptsByDay} />
+              <ActivityChart data={stats.attemptsByDay} notes={stats.dayNotes} />
             </CardContent>
           </Card>
         ) : null}
