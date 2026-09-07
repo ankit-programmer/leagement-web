@@ -108,7 +108,7 @@ function ProblemRow({ problem, attemptRunning }: { problem: ProblemListRow; atte
         </p>
         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
           {attemptRunning ? <Pill tone="warning">⏱ attempt running</Pill> : null}
-          {problem.pattern ? <Pill>{problem.pattern}</Pill> : null}
+          {/* Pattern tag deliberately hidden here: seeing it before you classify defeats the session. */}
           {problem.difficulty ? <Pill tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Pill> : null}
           <span>
             {problem.attemptCount} session{problem.attemptCount === 1 ? "" : "s"}

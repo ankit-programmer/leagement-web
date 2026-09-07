@@ -27,6 +27,25 @@ import { type Attempt, useDeleteProblem, useProblem, useUpdateProblem } from "@/
 
 const dateFmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" });
 
+/**
+ * The pattern tag is a spoiler: reading "dp, unbounded" before attempting skips the
+ * classification step the session exists to train. Hidden until clicked.
+ */
+function PatternReveal({ pattern }: { pattern: string }) {
+  const [shown, setShown] = useState(false);
+  if (shown) return <Pill>{pattern}</Pill>;
+  return (
+    <button
+      type="button"
+      onClick={() => setShown(true)}
+      title="Reveal the pattern tag (classify first!)"
+      className="rounded-chip transition-opacity hover:opacity-80"
+    >
+      <Pill>pattern · reveal</Pill>
+    </button>
+  );
+}
+
 function TimeSplit({ attempt }: { attempt: Attempt }) {
   const parts = TIME_PHASES.map((p) => ({ label: p.label, value: attempt[p.key] ?? 0 })).filter((p) => p.value > 0);
   if (parts.length === 0) return null;
@@ -141,7 +160,7 @@ export default function ProblemDetailPage() {
             ) : null}
           </h1>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
-            {problem.pattern ? <Pill>{problem.pattern}</Pill> : null}
+            {problem.pattern ? <PatternReveal pattern={problem.pattern} /> : null}
             {problem.difficulty ? <Pill tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Pill> : null}
             {problem.status === "retired" ? (
               <Pill tone="success">retired</Pill>
