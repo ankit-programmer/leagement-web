@@ -13,6 +13,7 @@ import {
   RectangleStackIcon as RectangleStackSolid,
   SparklesIcon as SparklesSolid,
 } from "@heroicons/react/24/solid";
+import { useIsRestoring } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -30,6 +31,7 @@ const NAV = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { token, user, logout } = useAuth();
+  const isRestoring = useIsRestoring();
   const router = useRouter();
   const pathname = usePathname();
   const isReview = /^\/decks\/[^/]+\/review/.test(pathname);
@@ -39,6 +41,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [token, router]);
 
   if (!token) return null; // undefined = reading storage; null = redirecting
+  // While the on-device cache restores (one localStorage read), queries report
+  // neither loading nor data — pages would flash their empty/error states.
+  if (isRestoring) return null;
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 

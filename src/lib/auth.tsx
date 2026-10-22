@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { identifyUser, resetAnalytics } from "./analytics";
 import { api, getToken, registerUnauthorizedHandler, setToken } from "./api";
+import { queryPersister } from "./query-persist";
 import type { User } from "./types";
 
 interface AuthContextValue {
@@ -37,6 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(null);
     setUser(null);
     queryClient.clear();
+    // The cleared cache would be persisted empty anyway; wipe the on-device copy explicitly.
+    void queryPersister.removeClient();
     router.push("/login");
   }, [queryClient, router]);
 
